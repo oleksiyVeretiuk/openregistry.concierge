@@ -65,6 +65,7 @@ def bot(mocker, db):
 
 class LogInterceptor(object):
     def __init__(self, logger):
+        logger.setLevel(logging.INFO)
         self.log_capture_string = StringIO()
         self.test_handler = logging.StreamHandler(self.log_capture_string)
         self.test_handler.setLevel(logging.INFO)

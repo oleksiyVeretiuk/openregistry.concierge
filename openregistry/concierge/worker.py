@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import argparse
 import logging
+import logging.config
 import os
 import time
 import yaml
@@ -22,13 +23,6 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-ch.setFormatter(
-    logging.Formatter('[%(asctime)s %(levelname)-5.5s] %(message)s')
-)
-logger.addHandler(ch)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity)
 
@@ -278,7 +272,8 @@ class BotWorker(object):
                 logger.error("Failed to patch asset {} to {} ({})".format(asset_id, status, message))
                 return False, patched_assets
             else:
-                logger.info("Successfully patched asset {} to {}".format(asset_id, status))
+                logger.info("Successfully patched asset {} to {}".format(asset_id, status),
+                            extra={'MESSAGE_ID': 'patch_asset'})
                 patched_assets.append(asset_id)
         return True, patched_assets
 
@@ -305,7 +300,8 @@ class BotWorker(object):
             logger.error("Failed to patch lot {} to {} ({})".format(lot['id'], status, message))
             return False
         else:
-            logger.info("Successfully patched lot {} to {}".format(lot['id'], status))
+            logger.info("Successfully patched lot {} to {}".format(lot['id'], status),
+                        extra={'MESSAGE_ID': 'patch_lot'})
             return True
 
 
@@ -316,6 +312,7 @@ def main():
     if os.path.isfile(params.config):
         with open(params.config) as config_object:
             config = yaml.load(config_object.read())
+        logging.config.dictConfig(config)
         BotWorker(config).run()
 
 
