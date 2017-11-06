@@ -35,6 +35,10 @@ EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity)
 
 class BotWorker(object):
     def __init__(self, config):
+        """
+        Args:
+            config: dictionary with configuration data
+        """
         self.config = config
         self.sleep = self.config['time_to_sleep']
         self.lots_client = LotsClient(
@@ -60,6 +64,23 @@ class BotWorker(object):
         self.patch_log_doc = self.db.get('patch_requests')
 
     def run(self):
+        """
+        Starts an infinite while loop in which lots, received from db,
+        are passing to 'process_lots' method for further processing.
+
+        In case if value of 'id' field of received lot matches value of field
+        'id' of one on lots, marked as broken and uploaded to db document,
+        specified in configuration file, checks value of 'rev' field of both
+        lots. 'rev' field specifying version of lot document in db. If lots
+        values of 'rev' field is identical (lot have not been changed since
+        upload to document and marked as broken), received lot will be skipped
+        and not passed to 'process_lots' method. If value of this field is differ,
+        field 'resolved' of broken lot in db document will be changed from 'false'
+        to 'true' and lot will be passed to 'process_lots' method.
+
+        Returns:
+            None
+        """
         logger.info("Starting worker")
         while True:
             for lot in self.get_lot():
@@ -75,6 +96,13 @@ class BotWorker(object):
             time.sleep(self.sleep)
 
     def get_lot(self):
+        """
+        Receiving lots from db, which are filtered by CouchDB filter
+        function specified in the configuration file.
+
+        Returns:
+            generator: Generator object with the received lots.
+        """
         logger.info('Getting Lots')
         return continuous_changes_feed(
             self.db, logger,
@@ -82,6 +110,39 @@ class BotWorker(object):
         )
 
     def process_lots(self, lot):
+        """
+        Performs the main processing of the lot. Checks the availability
+        of a given lot and assets united by this lot and switches their
+        statuses to required ones.
+
+        Lot considered as available, if it is in status 'verification'
+        or 'pending.dissolution'. If this condition is not satisfied,
+        lot will be skipped. Assets considered as available, if all of
+        them are in status 'pending'. If this condition is not satisfied,
+        lot status will be switched to 'pending'.
+
+        In case lot is in status 'pending.dissolution', switches assets statuses
+        to 'pending', sets None as value of asset field 'relatedLot' and switch lot
+        status to 'dissolved'. In case processed lot is in status 'verification', at
+        first, switches assets statuses to 'verification' and sets lot id as
+        'relatedLot' field value and after that switches to 'active' status. If all
+        PATCH requests were successful, switches lot to status 'active.salable'
+
+        In case error occurs during switching assets statuses, tries to switch
+        assets, which were patched successfully, back to status 'pending'. If
+        error occurs during this patch as well, lot will be marked as broken
+        and added to db document, specified in configuration file.
+
+        If error occurs during switching lot status to 'active.salable', this lot
+        will be considered as broken as well and added to db document, specified
+        in configuration file.
+
+        Args:
+            lot: dictionary which contains some fields of lot
+                 document from db: id, rev, status, assets, lotID.
+        Returns:
+            None
+        """
         lot_available = self.check_lot(lot)
         if not lot_available:
             logger.info("Skipping lot {}".format(lot['id']))
@@ -122,8 +183,18 @@ class BotWorker(object):
             else:
                 logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
 
-
     def check_lot(self, lot):
+        """
+        Makes GET request to openregistry by client, specified in configuration
+        file, with lot id from lot object, passed as parameter.
+
+        Args:
+            lot: dictionary which contains some fields of lot
+                 document from db: id, rev, status, assets, lotID.
+        Returns:
+            bool: True if request was successful and conditions were
+                  satisfied, False otherwise.
+        """
         try:
             lot = self.lots_client.get_lot(lot['id']).data
             logger.info('Successfully got lot {}'.format(lot['id']))
@@ -139,6 +210,24 @@ class BotWorker(object):
         return True
 
     def check_assets(self, lot, status='pending'):
+        """
+        Makes GET request to openregistry for every asset id in assets list
+        from lot object, passed as parameter, with client specified in
+        configuration file.
+
+        Args:
+            lot: dictionary which contains some fields of lot
+                 document from db: id, rev, status, assets, lotID.
+            status (str): status, in which assets are considered
+                          as available. Defaults to 'pending'.
+
+        Returns:
+            bool: True if request was successful and conditions were
+                  satisfied, False otherwise.
+
+        Raises:
+            RequestFailed: if RequestFailed was raised during request.
+        """
         for asset_id in lot['assets']:
             try:
                 asset = self.assets_client.get_asset(asset_id).data
@@ -150,12 +239,33 @@ class BotWorker(object):
             except RequestFailed as e:
                 logger.error('Falied to get asset {0}. Status code: {1}'.format(asset_id, e.status_code))
                 raise RequestFailed('Failed to get assets')
-            relatedLot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
-            if relatedLot_check or asset.status != status:
+            related_lot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
+            if related_lot_check or asset.status != status:
                 return False
         return True
 
     def patch_assets(self, lot, status, related_lot=None):
+        """
+        Makes PATCH request to openregistry for every asset id in assets list
+        from lot object, passed as parameter, with client specified in
+        configuration file. PATCH request will replace values of fields 'status' and
+        'relatedLot' of asset with values passed as parameters 'status' and
+        'related_lot' respectively.
+
+        Args:
+            lot: dictionary which contains some fields of lot
+                 document from db: id, rev, status, assets, lotID.
+            status (str): status, assets will be patching to.
+            related_lot: id of the lot, which unites assets, that
+                         will be patched.
+
+        Returns:
+            tuple: (
+                bool: True if request was successful and conditions were
+                      satisfied, False otherwise.
+                list: list with assets, which were successfully patched.
+            )
+        """
         patched_assets = []
         for asset_id in lot['assets']:
             asset = {"data": {"status": status, "relatedLot": related_lot}}
@@ -173,6 +283,19 @@ class BotWorker(object):
         return True, patched_assets
 
     def patch_lot(self, lot, status):
+        """
+        Makes PATCH request to openregistry for lot id from lot object,
+        passed as parameter, with client specified in configuration file.
+
+        Args:
+            lot: dictionary which contains some fields of lot
+                 document from db: id, rev, status, assets, lotID.
+            status (str): status, lot will be patching to.
+
+        Returns:
+            bool: True if request was successful and conditions were
+                  satisfied, False otherwise.
+        """
         try:
             self.lots_client.patch_lot(lot['id'], {"data": {"status": status}})
         except EXCEPTIONS as e:
@@ -187,7 +310,7 @@ class BotWorker(object):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='---- Labot Worker ----')
+    parser = argparse.ArgumentParser(description='---- OpenRegistry Concierge ----')
     parser.add_argument('config', type=str, help='Path to configuration file')
     params = parser.parse_args()
     if os.path.isfile(params.config):
