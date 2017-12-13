@@ -5,6 +5,7 @@ import logging.config
 import os
 import time
 import yaml
+from retrying import retry
 
 from openprocurement_client.resources.lots import LotsClient
 from openprocurement_client.resources.assets import AssetsClient
@@ -25,6 +26,12 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity)
+
+def retry_on_500_error(exception):
+    exceptions = [e for e in EXCEPTIONS if isinstance(exception, e)]
+    if len(exceptions) and exception.status_code >= 500:
+        return True
+    return False
 
 
 class BotWorker(object):
@@ -167,15 +174,23 @@ class BotWorker(object):
                             result = self.patch_lot(lot, "active.salable")
                             if result is False:
                                 log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
+
                 else:
                     self.patch_lot(lot, "pending")
         elif lot['status'] == 'pending.dissolution':
-            if self.check_assets(lot, 'active'):
-                self.patch_assets(lot, 'pending')
-                self.patch_lot(lot, 'dissolved')
+            result, _ = self.patch_assets(lot, 'pending')
+            if result:
                 logger.info("Assets {} from lot {} will be patched to 'pending'".format(lot['assets'], lot['id']))
             else:
                 logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
+            self.patch_lot(lot, 'dissolved')
+        elif lot['status'] == 'recomposed':
+            result, _ = self.patch_assets(lot, 'pending')
+            if result:
+                logger.info("Assets {} from lot {} will be patched to 'pending'".format(lot['assets'], lot['id']))
+            else:
+                logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
+            self.patch_lot(lot, 'pending')
 
     def check_lot(self, lot):
         """
@@ -198,7 +213,7 @@ class BotWorker(object):
         except RequestFailed as e:
             logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
-        if lot.status != 'verification' and lot.status != 'pending.dissolution':
+        if lot.status not in ('verification', 'recomposed', 'pending.dissolution'):
             logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot.id, lot.status))
             return False
         return True
@@ -261,21 +276,25 @@ class BotWorker(object):
             )
         """
         patched_assets = []
+        data = {"data": {"status": status, "relatedLot": related_lot}}
+        is_all_patched = True
         for asset_id in lot['assets']:
-            asset = {"data": {"status": status, "relatedLot": related_lot}}
             try:
-                self.assets_client.patch_asset(asset_id, asset)
+                self._patch_single_asset(asset_id, data)
             except EXCEPTIONS as e:
-                message = e.message
-                if e.status_code >= 500:
-                    message = 'Server error: {}'.format(e.status_code)
+                is_all_patched = False
+                message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
                 logger.error("Failed to patch asset {} to {} ({})".format(asset_id, status, message))
-                return False, patched_assets
             else:
-                logger.info("Successfully patched asset {} to {}".format(asset_id, status),
-                            extra={'MESSAGE_ID': 'patch_asset'})
                 patched_assets.append(asset_id)
-        return True, patched_assets
+        return is_all_patched, patched_assets
+
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_500_error)
+    def _patch_single_asset(self, asset_id, data):
+        self.assets_client.patch_asset(asset_id, data)
+        logger.info("Successfully patched asset {} to {}".format(asset_id, data['data']['status']),
+                    extra={'MESSAGE_ID': 'patch_asset'})
+        return True, asset_id
 
     def patch_lot(self, lot, status):
         """
