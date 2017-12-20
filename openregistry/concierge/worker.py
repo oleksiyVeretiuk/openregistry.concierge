@@ -13,8 +13,10 @@ from openprocurement_client.exceptions import (
     Forbidden,
     RequestFailed,
     ResourceNotFound,
-    UnprocessableEntity
-)
+    UnprocessableEntity,
+    Conflict,
+    PreconditionFailed,
+    )
 
 from .utils import (
     resolve_broken_lot,
@@ -25,11 +27,11 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
-EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity)
+EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-def retry_on_500_error(exception):
-    exceptions = [e for e in EXCEPTIONS if isinstance(exception, e)]
-    if len(exceptions) and exception.status_code >= 500:
+
+def retry_on_error(exception):
+    if isinstance(exception, EXCEPTIONS) and (exception.status_code >= 500 or exception.status_code in [409, 412, 429]):
         return True
     return False
 
@@ -289,7 +291,7 @@ class BotWorker(object):
                 patched_assets.append(asset_id)
         return is_all_patched, patched_assets
 
-    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_500_error)
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _patch_single_asset(self, asset_id, data):
         self.assets_client.patch_asset(asset_id, data)
         logger.info("Successfully patched asset {} to {}".format(asset_id, data['data']['status']),
