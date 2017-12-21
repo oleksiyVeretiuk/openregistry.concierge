@@ -13,7 +13,9 @@ from openprocurement_client.exceptions import (
     Forbidden,
     RequestFailed,
     ResourceNotFound,
-    UnprocessableEntity
+    UnprocessableEntity,
+    Conflict,
+    PreconditionFailed,
 )
 
 from .utils import (
@@ -25,11 +27,13 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
-EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity)
+EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-def retry_on_500_error(exception):
-    exceptions = [e for e in EXCEPTIONS if isinstance(exception, e)]
-    if len(exceptions) and exception.status_code >= 500:
+HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution')
+
+
+def retry_on_error(exception):
+    if isinstance(exception, EXCEPTIONS) and (exception.status_code >= 500 or exception.status_code in [409, 412, 429]):
         return True
     return False
 
@@ -174,7 +178,6 @@ class BotWorker(object):
                             result = self.patch_lot(lot, "active.salable")
                             if result is False:
                                 log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
-
                 else:
                     self.patch_lot(lot, "pending")
         elif lot['status'] == 'pending.dissolution':
@@ -213,7 +216,7 @@ class BotWorker(object):
         except RequestFailed as e:
             logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
-        if lot.status not in ('verification', 'recomposed', 'pending.dissolution'):
+        if lot.status not in HANDLED_STATUSES:
             logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot.id, lot.status))
             return False
         return True
@@ -289,7 +292,7 @@ class BotWorker(object):
                 patched_assets.append(asset_id)
         return is_all_patched, patched_assets
 
-    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_500_error)
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _patch_single_asset(self, asset_id, data):
         self.assets_client.patch_asset(asset_id, data)
         logger.info("Successfully patched asset {} to {}".format(asset_id, data['data']['status']),
