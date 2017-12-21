@@ -193,6 +193,13 @@ class BotWorker(object):
             else:
                 logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
             self.patch_lot(lot, 'pending')
+        elif lot['status'] == 'pending.sold':
+            result, _ = self.patch_assets(lot, 'complete')
+            if result:
+                logger.info("Assets {} from lot {} will be patched to 'complete'".format(lot['assets'], lot['id']))
+            else:
+                logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
+            self.patch_lot(lot, 'sold')
 
     def check_lot(self, lot):
         """
@@ -215,7 +222,7 @@ class BotWorker(object):
         except RequestFailed as e:
             logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
-        if lot.status not in ('verification', 'recomposed', 'pending.dissolution'):
+        if lot.status not in ('verification', 'recomposed', 'pending.dissolution', 'pending.sold'):
             logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot.id, lot.status))
             return False
         return True
