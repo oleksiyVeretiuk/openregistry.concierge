@@ -16,7 +16,7 @@ from openprocurement_client.exceptions import (
     UnprocessableEntity,
     Conflict,
     PreconditionFailed,
-    )
+)
 
 from .utils import (
     resolve_broken_lot,
@@ -28,6 +28,8 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
+
+HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold')
 
 
 def retry_on_error(exception):
@@ -176,7 +178,6 @@ class BotWorker(object):
                             result = self.patch_lot(lot, "active.salable")
                             if result is False:
                                 log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
-
                 else:
                     self.patch_lot(lot, "pending")
         elif lot['status'] == 'pending.dissolution':
@@ -222,7 +223,7 @@ class BotWorker(object):
         except RequestFailed as e:
             logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
-        if lot.status not in ('verification', 'recomposed', 'pending.dissolution', 'pending.sold'):
+        if lot.status not in HANDLED_STATUSES:
             logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot.id, lot.status))
             return False
         return True
