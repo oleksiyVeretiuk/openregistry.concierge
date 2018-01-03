@@ -6,7 +6,7 @@ from .design import sync_design
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
 STATUS_FILTER = """function(doc, req) {
-  if(doc.status == "verification" || doc.status == "pending.dissolution") {return true;}
+  if(doc.status == "verification" || doc.status == "pending.dissolution" || doc.status == "recomposed") {return true;}
     return false;
 }"""
 

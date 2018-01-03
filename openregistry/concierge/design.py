@@ -19,7 +19,7 @@ def sync_design(db):
 
 
 concierge_view = ViewDefinition('lots', 'check_lot', '''function(doc) {
-    var statuses = ['waiting', 'pending.dissolution', 'recomposed']
+    var statuses = ['verification', 'pending.dissolution', 'recomposed']
     if(doc.doc_type == 'Lot' && statuses.indexOf(doc.status) != 1) {
         var fields=%s, data={};
         for (var i in fields) {

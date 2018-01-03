@@ -216,11 +216,11 @@ class BotWorker(object):
         except RequestFailed as e:
             logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
-        if lot.status != actual_status:
-            logger.warning("Lot {0} status ('{1}') already changed to ('{3}')".format(lot.id, lot.status, actual_status))
+        if lot['status'] != actual_status:
+            logger.warning("Lot {0} status ('{1}') already changed to ('{3}')".format(lot['id'], lot['status'], actual_status))
             return False
-        if lot.status not in HANDLED_STATUSES:
-            logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot.id, lot.status))
+        if lot['status'] not in HANDLED_STATUSES:
+            logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot['id'], lot['status']))
             return False
         return True
 
