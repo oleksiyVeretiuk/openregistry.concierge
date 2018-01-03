@@ -43,6 +43,9 @@ def prepare_couchdb_filter(db, doc, filter_name, filter, logger):
     if filter_name not in design_doc['filters']:
         design_doc['filters'][filter_name] = filter
         logger.debug('Successfully created {0}/{1} filter.'.format(doc, filter_name))
+    elif design_doc['filters'][filter_name] != filter:
+        design_doc['filters'][filter_name] = filter
+        logger.debug('Successfully updated {0}/{1} filter.'.format(doc, filter_name))
     else:
         logger.debug('Filter {0}/{1} already exists.'.format(doc, filter_name))
     db.save(design_doc)
