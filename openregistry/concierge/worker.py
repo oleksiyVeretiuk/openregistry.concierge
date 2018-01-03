@@ -152,7 +152,7 @@ class BotWorker(object):
         if not lot_available:
             logger.info("Skipping lot {}".format(lot['id']))
             return
-        logger.info("Processing lot {} in status {}".format(lot['id'], lot['status'])
+        logger.info("Processing lot {} in status {}".format(lot['id'], lot['status']))
         if lot['status'] == 'verification':
             try:
                 assets_available = self.check_assets(lot)
