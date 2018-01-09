@@ -351,7 +351,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(False, []), (True, []]; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[0] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
 
     assert mock_check_assets.call_count == 1
     assert mock_check_assets.call_args[0] == (verification_lot,)
@@ -365,7 +365,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[1] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[1] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
 
     assert mock_check_assets.call_count == 2
     assert mock_check_assets.call_args[0] == (verification_lot,)
@@ -383,7 +383,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(verification_lot)  # assets_available: False; patch_assets: None; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[2] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[2] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
 
     assert mock_check_assets.call_count == 3
     assert mock_check_assets.call_args[0] == (verification_lot,)
@@ -397,7 +397,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(verification_lot)  # assets_available: raises exception; patch_assets: None; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[3] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[3] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
     assert log_strings[4] == 'Due to fail in getting assets, lot 9ee8f769438e403ebfb17b2240aedcf1 is skipped'
 
     assert mock_check_assets.call_count == 4
@@ -410,7 +410,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_dissolution_lot)  # assets_available: None; patch_assets: (True, []); check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[5] == 'Processing lot b844573afaa24e4fb098f3027e605c87'
+    assert log_strings[5] == 'Processing lot b844573afaa24e4fb098f3027e605c87 in status pending.dissolution'
     assert log_strings[6] == "Assets {} from lot {} will be patched to 'pending'".format(pending_dissolution_lot['assets'],
                                                                                          pending_dissolution_lot['id'])
 
@@ -444,7 +444,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(recomposed_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[10] == 'Processing lot {}'.format(recomposed_lot['id'])
+    assert log_strings[10] == 'Processing lot {} in status recomposed'.format(recomposed_lot['id'])
     assert log_strings[11] == "Assets {} from lot {} will be patched to 'pending'".format(recomposed_lot['assets'],
                                                                                           recomposed_lot['id'])
     assert mock_check_lot.call_count == 8
@@ -458,7 +458,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(recomposed_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[12] == 'Processing lot {}'.format(recomposed_lot['id'])
+    assert log_strings[12] == 'Processing lot {} in status recomposed'.format(recomposed_lot['id'])
     assert log_strings[13] == 'Not valid assets {} in lot {}'.format(recomposed_lot['assets'], recomposed_lot['id'])
     assert mock_check_lot.call_count == 9
     assert mock_check_lot.call_args[0] == (recomposed_lot,)
@@ -536,7 +536,7 @@ def test_process_lots_broken(bot, logger, mocker):
     )
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[0] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
     assert log_strings[1] == "Assets ['successfully_patched_assets'] will be repatched to 'pending'"
 
     # failed on patching assets to active
@@ -553,7 +553,7 @@ def test_process_lots_broken(bot, logger, mocker):
     )
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[2] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[2] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
     assert log_strings[3] == "Assets [u'e519404fd0b94305b3b19ec60add05e7', u'64099f8259c64215b3bd290bc12ec73a'," \
                              " u'f00d0ae5032f4927a4e0c046cafd3c62', u'c1c043ba1e3d457c8632c3b48c7279a4'] will" \
                              " be repatched to 'pending'"
@@ -571,7 +571,7 @@ def test_process_lots_broken(bot, logger, mocker):
     )
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[4] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1'
+    assert log_strings[4] == 'Processing lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
 
 
 def test_check_assets(bot, logger, mocker):

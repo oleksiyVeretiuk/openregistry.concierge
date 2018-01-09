@@ -289,11 +289,11 @@ class BotWorker(object):
             )
         """
         patched_assets = []
-        data = {"data": {"status": status, "relatedLot": related_lot}}
         is_all_patched = True
+        patch_data = {"status": status, "relatedLot": related_lot}
         for asset_id in lot['assets']:
             try:
-                self._patch_single_asset(asset_id, data)
+                self._patch_single_asset(asset_id, patch_data)
             except EXCEPTIONS as e:
                 is_all_patched = False
                 message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
@@ -303,11 +303,13 @@ class BotWorker(object):
         return is_all_patched, patched_assets
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
-    def _patch_single_asset(self, asset_id, data):
-        self.assets_client.patch_asset(asset_id, data)
-        logger.info("Successfully patched asset {} to {}".format(asset_id, data['data']['status']),
+    def _patch_single_asset(self, asset_id, patch_data):
+        self.assets_client.patch_asset(
+            asset_id,
+            {"data": patch_data}
+        )
+        logger.info("Successfully patched asset {} to {}".format(asset_id, patch_data['status']),
                     extra={'MESSAGE_ID': 'patch_asset'})
-        return True, asset_id
 
     def patch_lot(self, lot, status):
         """
