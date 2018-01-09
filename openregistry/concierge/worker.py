@@ -152,7 +152,7 @@ class BotWorker(object):
         if not lot_available:
             logger.info("Skipping lot {}".format(lot['id']))
             return
-        logger.info("Processing lot {}".format(lot['id']))
+        logger.info("Processing lot {} in status {}".format(lot['id'], lot['status']))
         if lot['status'] == 'verification':
             try:
                 assets_available = self.check_assets(lot)
@@ -215,16 +215,19 @@ class BotWorker(object):
                   satisfied, False otherwise.
         """
         try:
-            lot = self.lots_client.get_lot(lot['id']).data
-            logger.info('Successfully got lot {}'.format(lot['id']))
+            actual_status = self.lots_client.get_lot(lot['id']).data.status
+            logger.info('Successfully got lot {0}'.format(lot['id']))
         except ResourceNotFound as e:
             logger.error('Falied to get lot {0}: {1}'.format(lot['id'], e.message))
             return False
         except RequestFailed as e:
             logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
-        if lot.status not in HANDLED_STATUSES:
-            logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot.id, lot.status))
+        if lot['status'] != actual_status:
+            logger.warning("Lot {0} status ('{1}') already changed to ('{2}')".format(lot['id'], lot['status'], actual_status))
+            return False
+        if lot['status'] not in HANDLED_STATUSES:
+            logger.warning("Lot {0} can not be processed in current status ('{1}')".format(lot['id'], lot['status']))
             return False
         return True
 
