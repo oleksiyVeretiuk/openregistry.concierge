@@ -474,7 +474,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_sold_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[14] == 'Processing lot {}'.format(pending_sold_lot['id'])
+    assert log_strings[14] == 'Processing lot {} in status pending.sold'.format(pending_sold_lot['id'])
     assert log_strings[15] == "Assets {} from lot {} will be patched to 'complete'".format(pending_sold_lot['assets'],
                                                                                            pending_sold_lot['id'])
     assert mock_check_lot.call_count == 10
@@ -488,7 +488,7 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_sold_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[16] == 'Processing lot {}'.format(pending_sold_lot['id'])
+    assert log_strings[16] == 'Processing lot {} in status pending.sold'.format(pending_sold_lot['id'])
     assert log_strings[17] == 'Not valid assets {} in lot {}'.format(pending_sold_lot['assets'], pending_sold_lot['id'])
     assert mock_check_lot.call_count == 11
     assert mock_check_lot.call_args[0] == (pending_sold_lot,)
