@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution')
+HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold')
 
 
 def retry_on_error(exception):
@@ -194,6 +194,13 @@ class BotWorker(object):
             else:
                 logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
             self.patch_lot(lot, 'pending')
+        elif lot['status'] == 'pending.sold':
+            result, _ = self.patch_assets(lot, 'complete')
+            if result:
+                logger.info("Assets {} from lot {} will be patched to 'complete'".format(lot['assets'], lot['id']))
+            else:
+                logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
+            self.patch_lot(lot, 'sold')
 
     def check_lot(self, lot):
         """

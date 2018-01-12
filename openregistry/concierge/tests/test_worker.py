@@ -31,6 +31,7 @@ def test_get_lot(bot, logger, mocker):
     assert result.next() == lots[1]['data']
     assert result.next() == lots[2]['data']
     assert result.next() == lots[3]['data']
+    assert result.next() == lots[4]['data']
 
     with pytest.raises(StopIteration):
         result.next()
@@ -48,7 +49,6 @@ def test_run(bot, logger, mocker, almost_always_true):
     for lot in lots:
         lot['data']['rev'] = '123'
     mock_get_lot.return_value = (lot['data'] for lot in lots)
-
     mocker.patch('openregistry.concierge.worker.True', almost_always_true(3))
 
     if bot.errors_doc.get(lots[0]['data']['id'], None):
@@ -59,6 +59,8 @@ def test_run(bot, logger, mocker, almost_always_true):
         del bot.errors_doc[lots[2]['data']['id']]
     if bot.errors_doc.get(lots[3]['data']['id'], None):
         del bot.errors_doc[lots[3]['data']['id']]
+    if bot.errors_doc.get(lots[4]['data']['id'], None):
+        del bot.errors_doc[lots[4]['data']['id']]
     bot.db.save(bot.errors_doc)
 
     bot.run()
@@ -67,12 +69,13 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert log_strings[0] == "Starting worker"
 
     assert mock_get_lot.call_count is 3
-    assert mock_process_lots.call_count == 4
+    assert mock_process_lots.call_count == 5
 
     assert mock_process_lots.call_args_list[0][0][0] == lots[0]['data']
     assert mock_process_lots.call_args_list[1][0][0] == lots[1]['data']
     assert mock_process_lots.call_args_list[2][0][0] == lots[2]['data']
     assert mock_process_lots.call_args_list[3][0][0] == lots[3]['data']
+    assert mock_process_lots.call_args_list[4][0][0] == lots[4]['data']
 
     error_lots = deepcopy(lots)
     error_lots[1]['data']['rev'] = '234'
@@ -88,9 +91,9 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert log_strings[0] == "Starting worker"
 
     assert mock_get_lot.call_count is 5
-    assert mock_process_lots.call_count == 5
+    assert mock_process_lots.call_count == 6
 
-    assert mock_process_lots.call_args_list[4][0][0] == error_lots[1]['data']
+    assert mock_process_lots.call_args_list[5][0][0] == error_lots[1]['data']
 
 
 def test_patch_lot(bot, logger, mocker):
@@ -298,7 +301,19 @@ def test_patch_assets_active_fail(bot, logger, mocker):
 
 def test_process_lots(bot, logger, mocker):
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
-    mock_check_lot.side_effect = [True, True, True, True, True, False, True, True, True]
+    mock_check_lot.side_effect = [
+        True,
+        True,
+        True,
+        True,
+        True,
+        False,
+        True,
+        True,
+        True,
+        True,
+        True
+    ]
 
     mock_check_assets = mocker.patch.object(bot, 'check_assets', autospec=True)
     mock_check_assets.side_effect = [
@@ -306,7 +321,8 @@ def test_process_lots(bot, logger, mocker):
         True,
         False,
         RequestFailed(response=munchify({"text": "Request failed."})),
-        False
+        False,
+        True
     ]
 
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
@@ -314,6 +330,8 @@ def test_process_lots(bot, logger, mocker):
         (False, []),
         (True, []),
         (True, ['all_assets']),
+        (True, ['all_assets']),
+        (False, []),
         (True, ['all_assets']),
         (False, []),
         (True, ['all_assets']),
@@ -448,6 +466,36 @@ def test_process_lots(bot, logger, mocker):
 
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending')
+
+
+    pending_sold_lot = lots[4]['data']
+
+
+    bot.process_lots(pending_sold_lot)
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[14] == 'Processing lot {} in status pending.sold'.format(pending_sold_lot['id'])
+    assert log_strings[15] == "Assets {} from lot {} will be patched to 'complete'".format(pending_sold_lot['assets'],
+                                                                                           pending_sold_lot['id'])
+    assert mock_check_lot.call_count == 10
+    assert mock_check_lot.call_args[0] == (pending_sold_lot,)
+    assert mock_patch_lot.call_args[0] == (pending_sold_lot, 'sold')
+
+    assert mock_check_assets.call_count == 4
+    assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
+
+
+    bot.process_lots(pending_sold_lot)
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[16] == 'Processing lot {} in status pending.sold'.format(pending_sold_lot['id'])
+    assert log_strings[17] == 'Not valid assets {} in lot {}'.format(pending_sold_lot['assets'], pending_sold_lot['id'])
+    assert mock_check_lot.call_count == 11
+    assert mock_check_lot.call_args[0] == (pending_sold_lot,)
+    assert mock_patch_lot.call_args[0] == (pending_sold_lot, 'sold')
+
+    assert mock_check_assets.call_count == 4
+    assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
 
 
 def test_process_lots_broken(bot, logger, mocker):
