@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from couchdb import Server, Session
 from socket import error
+from logging import addLevelName, Logger
+
+from openprocurement_client.resources.lots import LotsClient
+from openprocurement_client.resources.assets import AssetsClient
 
 from .design import sync_design
 
@@ -9,6 +13,17 @@ STATUS_FILTER = """function(doc, req) {
   if(doc.status == "verification" || doc.status == "pending.dissolution" || doc.status == "recomposed" || doc.status == "pending.sold") {return true;}
     return false;
 }"""
+
+addLevelName(25, 'CHECK')
+
+
+def check(self, msg, exc=None, *args, **kwargs):
+    self.log(25, msg)
+    if exc:
+        self.error(exc, exc_info=True)
+
+
+Logger.check = check
 
 
 class ConfigError(Exception):
@@ -98,3 +113,47 @@ def resolve_broken_lot(db, logger, doc, lot):
         raise ConfigError(e.strerror)
     else:
         return doc
+
+
+def init_clients(config, logger):
+    clients_from_config = {
+        'lots_client': {'section': 'lots', 'client_instance': LotsClient},
+        'assets_client': {'section': 'assets', 'client_instance': AssetsClient}
+    }
+    result = ''
+    exceptions = []
+
+    for key, item in clients_from_config.items():
+        section = item['section']
+        try:
+            client = item['client_instance'](
+                key=config[section]['api']['token'],
+                host_url=config[section]['api']['url'],
+                api_version=config[section]['api']['version']
+            )
+            clients_from_config[key] = client
+            result = ('ok', None)
+        except Exception as e:
+            exceptions.append(e)
+            result = ('failed', e)
+        logger.check('{} - {}'.format(key, result[0]), result[1])
+    try:
+        if config['db'].get('login', '') \
+                and config['db'].get('password', ''):
+            db_url = "http://{login}:{password}@{host}:{port}".format(
+                **config['db']
+            )
+        else:
+            db_url = "http://{host}:{port}".format(**config['db'])
+
+        clients_from_config['db'] = prepare_couchdb(db_url, config['db']['name'], logger, config['errors_doc'])
+        result = ('ok', None)
+    except Exception as e:
+        exceptions.append(e)
+        result = ('failed', e)
+    logger.check('couchdb - {}'.format(result[0]), result[1])
+
+    if exceptions:
+        raise exceptions[0]
+
+    return clients_from_config
