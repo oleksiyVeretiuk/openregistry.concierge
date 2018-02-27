@@ -58,8 +58,8 @@ def db(request):
 
 @pytest.fixture(scope='function')
 def bot(mocker, db):
-    mocker.patch('openregistry.concierge.worker.LotsClient', autospec=True)
-    mocker.patch('openregistry.concierge.worker.AssetsClient', autospec=True)
+    mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
+    mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
     return BotWorker(TEST_CONFIG)
 
 
