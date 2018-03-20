@@ -7,8 +7,6 @@ import time
 import yaml
 from retrying import retry
 
-from openprocurement_client.resources.lots import LotsClient
-from openprocurement_client.resources.assets import AssetsClient
 from openprocurement_client.exceptions import (
     Forbidden,
     RequestFailed,
@@ -22,8 +20,9 @@ from .utils import (
     resolve_broken_lot,
     continuous_changes_feed,
     log_broken_lot,
-    prepare_couchdb
+    init_clients
 )
+from .constants import DEFAULTS
 
 logger = logging.getLogger(__name__)
 
@@ -46,25 +45,8 @@ class BotWorker(object):
         """
         self.config = config
         self.sleep = self.config['time_to_sleep']
-        self.lots_client = LotsClient(
-            key=self.config['lots']['api']['token'],
-            host_url=self.config['lots']['api']['url'],
-            api_version=self.config['lots']['api']['version']
-        )
-        self.assets_client = AssetsClient(
-            key=self.config['assets']['api']['token'],
-            host_url=self.config['assets']['api']['url'],
-            api_version=self.config['assets']['api']['version']
-        )
-        if self.config['db'].get('login', '') \
-                and self.config['db'].get('password', ''):
-            db_url = "http://{login}:{password}@{host}:{port}".format(
-                **self.config['db']
-            )
-        else:
-            db_url = "http://{host}:{port}".format(**self.config['db'])
-
-        self.db = prepare_couchdb(db_url, self.config['db']['name'], logger, self.config['errors_doc'])
+        for key, item in init_clients(config, logger).items():
+            setattr(self, key, item)
         self.errors_doc = self.db.get(self.config['errors_doc'])
         self.patch_log_doc = self.db.get('patch_requests')
 
@@ -342,12 +324,20 @@ class BotWorker(object):
 def main():
     parser = argparse.ArgumentParser(description='---- OpenRegistry Concierge ----')
     parser.add_argument('config', type=str, help='Path to configuration file')
+    parser.add_argument('-t', dest='check', action='store_const',
+                        const=True, default=False,
+                        help='Clients check only')
     params = parser.parse_args()
+    config = {}
     if os.path.isfile(params.config):
         with open(params.config) as config_object:
             config = yaml.load(config_object.read())
         logging.config.dictConfig(config)
-        BotWorker(config).run()
+    DEFAULTS.update(config)
+    worker = BotWorker(DEFAULTS)
+    if params.check:
+        exit()
+    worker.run()
 
 
 if __name__ == "__main__":

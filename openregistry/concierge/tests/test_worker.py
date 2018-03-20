@@ -6,7 +6,9 @@ from json import load
 import pytest
 from munch import munchify
 
+from openregistry.concierge.tests.conftest import TEST_CONFIG
 from openregistry.concierge.worker import logger as LOGGER
+from openregistry.concierge.worker import BotWorker
 from openprocurement_client.exceptions import (
     Forbidden,
     ResourceNotFound,
@@ -15,6 +17,16 @@ from openprocurement_client.exceptions import (
 )
 
 ROOT = os.path.dirname(__file__) + '/data/'
+
+
+def test_concierge_init(db, logger, mocker):
+    mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
+    mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
+    BotWorker(TEST_CONFIG)
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[0] == 'lots_client - ok'
+    assert log_strings[1] == 'assets_client - ok'
+    assert log_strings[2] == 'couchdb - ok'
 
 
 def test_get_lot(bot, logger, mocker):
