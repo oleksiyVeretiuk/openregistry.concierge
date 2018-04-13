@@ -181,5 +181,40 @@
             "9d0e38358ee248f19491878b80bde7c2"
          ]
       }
+   },
+   {
+      "data":{
+         "status":"composing",
+         "lotID":"UA-2017-08-29-000005",
+         "description":"Lot with new client",
+         "title":"Lot with new client",
+         "lotType":"loki",
+         "id":"6843a841eb9a44829ce05a8fa227b429",
+         "date":"2017-08-29T13:05:00.157430+03:00",
+         "lotCustodian":{
+            "contactPoint":{
+               "name":"Державне управління справами",
+               "telephone":"0440000000"
+            },
+            "identifier":{
+               "scheme":"UA-EDR",
+               "id":"00037256",
+               "uri":"http://www.dus.gov.ua/"
+            },
+            "name":"Державне управління справами",
+            "address":{
+               "postalCode":"01220",
+               "countryName":"Україна",
+               "streetAddress":"вул. Банкова, 11, корпус 1",
+               "region":"м. Київ",
+               "locality":"м. Київ"
+            }
+         },
+         "owner":"broker",
+         "dateModified":"2017-08-29T13:05:00.158015+03:00",
+         "assets":[
+            "efde5be10ffa4879b8873d5a6b9e0c42"
+         ]
+      }
    }
 ]
