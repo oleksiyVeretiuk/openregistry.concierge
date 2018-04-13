@@ -142,47 +142,43 @@ class BotWorker(object):
                 logger.info("Due to fail in getting assets, lot {} is skipped".format(lot['id']))
             else:
                 if assets_available:
-                    result, patched_assets = self.patch_assets(lot, 'verification', lot['id'])
-                    if result is False:
-                        if patched_assets:
-                            logger.info("Assets {} will be repatched to 'pending'".format(patched_assets))
-                            result, _ = self.patch_assets({'assets': patched_assets}, 'pending')
-                            if result is False:
-                                log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to verification')
-                    else:
-                        result, _ = self.patch_assets(lot, 'active', lot['id'])
-                        if result is False:
-                            logger.info("Assets {} will be repatched to 'pending'".format(lot['assets']))
-                            result, _ = self.patch_assets(lot, 'pending')
-                            if result is False:
-                                log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
-                        else:
-                            result = self.patch_lot(lot, "active.salable")
-                            if result is False:
-                                log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
+                    self._process_verification_lot_with_assets(lot)
                 else:
                     self.patch_lot(lot, "pending")
         elif lot['status'] == 'pending.dissolution':
-            result, _ = self.patch_assets(lot, 'pending')
-            if result:
-                logger.info("Assets {} from lot {} will be patched to 'pending'".format(lot['assets'], lot['id']))
-            else:
-                logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
-            self.patch_lot(lot, 'dissolved')
+            self._process_lot_and_assets(lot, 'dissolved', 'pending')
         elif lot['status'] == 'recomposed':
-            result, _ = self.patch_assets(lot, 'pending')
-            if result:
-                logger.info("Assets {} from lot {} will be patched to 'pending'".format(lot['assets'], lot['id']))
-            else:
-                logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
-            self.patch_lot(lot, 'pending')
+            self._process_lot_and_assets(lot, 'pending', 'pending')
         elif lot['status'] == 'pending.sold':
-            result, _ = self.patch_assets(lot, 'complete')
-            if result:
-                logger.info("Assets {} from lot {} will be patched to 'complete'".format(lot['assets'], lot['id']))
+            self._process_lot_and_assets(lot, 'sold', 'complete')
+
+    def _process_verification_lot_with_assets(self, lot):
+        result, patched_assets = self.patch_assets(lot, 'verification', lot['id'])
+        if result is False:
+            if patched_assets:
+                logger.info("Assets {} will be repatched to 'pending'".format(patched_assets))
+                result, _ = self.patch_assets({'assets': patched_assets}, 'pending')
+                if result is False:
+                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to verification')
+        else:
+            result, _ = self.patch_assets(lot, 'active', lot['id'])
+            if result is False:
+                logger.info("Assets {} will be repatched to 'pending'".format(lot['assets']))
+                result, _ = self.patch_assets(lot, 'pending')
+                if result is False:
+                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
-                logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
-            self.patch_lot(lot, 'sold')
+                result = self.patch_lot(lot, "active.salable")
+                if result is False:
+                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
+
+    def _process_lot_and_assets(self, lot, lot_status, asset_status):
+        result, _ = self.patch_assets(lot, asset_status)
+        if result:
+            logger.info("Assets {} from lot {} will be patched to '{}'".format(lot['assets'], lot['id'], asset_status))
+        else:
+            logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
+        self.patch_lot(lot, lot_status)
 
     def check_lot(self, lot):
         """
