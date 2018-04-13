@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold')
+HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold', 'composing')
 
 IS_BOT_WORKING = True
 
@@ -137,16 +137,17 @@ class BotWorker(object):
             logger.info("Skipping lot {}".format(lot['id']))
             return
         logger.info("Processing lot {} in status {}".format(lot['id'], lot['status']))
-        if lot['status'] == 'verification':
+        if lot['status'] in ['verification', 'composing']:
             try:
                 assets_available = self.check_assets(lot)
             except RequestFailed:
                 logger.info("Due to fail in getting assets, lot {} is skipped".format(lot['id']))
             else:
                 if assets_available:
-                    self._process_verification_lot_with_assets(lot)
+                    self._add_assets_to_lot(lot)
                 else:
-                    self.patch_lot(lot, "pending")
+                    next_status = 'invalid' if lot['lotType'] == 'loki' else 'pending'
+                    self.patch_lot(lot, next_status)
         elif lot['status'] == 'pending.dissolution':
             self._process_lot_and_assets(lot, 'dissolved', 'pending')
         elif lot['status'] == 'recomposed':
@@ -154,7 +155,7 @@ class BotWorker(object):
         elif lot['status'] == 'pending.sold':
             self._process_lot_and_assets(lot, 'sold', 'complete')
 
-    def _process_verification_lot_with_assets(self, lot):
+    def _add_assets_to_lot(self, lot):
         result, patched_assets = self.patch_assets(lot, 'verification', lot['id'])
         if result is False:
             if patched_assets:
@@ -170,7 +171,8 @@ class BotWorker(object):
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
-                result = self.patch_lot(lot, "active.salable")
+                next_status = 'pending' if lot['lotType'] == 'loki' else 'active.salable'
+                result = self.patch_lot(lot, next_status)
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
 
