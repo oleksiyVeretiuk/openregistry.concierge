@@ -30,6 +30,8 @@ EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, P
 
 HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold')
 
+IS_BOT_WORKING = True
+
 
 def retry_on_error(exception):
     if isinstance(exception, EXCEPTIONS) and (exception.status_code >= 500 or exception.status_code in [409, 412, 429]):
@@ -69,7 +71,7 @@ class BotWorker(object):
             None
         """
         logger.info("Starting worker")
-        while True:
+        while IS_BOT_WORKING:
             for lot in self.get_lot():
                 broken_lot = self.errors_doc.get(lot['id'], None)
                 if broken_lot:

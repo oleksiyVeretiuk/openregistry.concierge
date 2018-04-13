@@ -61,7 +61,8 @@ def test_run(bot, logger, mocker, almost_always_true):
     for lot in lots:
         lot['data']['rev'] = '123'
     mock_get_lot.return_value = (lot['data'] for lot in lots)
-    mocker.patch('openregistry.concierge.worker.True', almost_always_true(3))
+
+    mocker.patch('openregistry.concierge.worker.IS_BOT_WORKING', almost_always_true(3))
 
     if bot.errors_doc.get(lots[0]['data']['id'], None):
         del bot.errors_doc[lots[0]['data']['id']]
@@ -95,7 +96,7 @@ def test_run(bot, logger, mocker, almost_always_true):
         bot.errors_doc[lot['data']['id']] = lot['data']
     bot.db.save(bot.errors_doc)
 
-    mocker.patch('openregistry.concierge.worker.True', almost_always_true(2))
+    mocker.patch('openregistry.concierge.worker.IS_BOT_WORKING', almost_always_true(2))
     mock_get_lot.return_value = (lot['data'] for lot in lots)
 
     bot.run()
@@ -313,7 +314,7 @@ def test_patch_assets_active_fail(bot, logger, mocker):
 
 def test_process_lots(bot, logger, mocker):
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
-    mock_check_lot.side_effect = [
+    mock_check_lot.side_effect = iter([
         True,
         True,
         True,
@@ -325,20 +326,20 @@ def test_process_lots(bot, logger, mocker):
         True,
         True,
         True
-    ]
+    ])
 
     mock_check_assets = mocker.patch.object(bot, 'check_assets', autospec=True)
-    mock_check_assets.side_effect = [
+    mock_check_assets.side_effect = iter([
         True,
         True,
         False,
         RequestFailed(response=munchify({"text": "Request failed."})),
         False,
         True
-    ]
+    ])
 
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
-    mock_patch_assets.side_effect = [
+    mock_patch_assets.side_effect = iter([
         (False, []),
         (True, []),
         (True, ['all_assets']),
@@ -348,7 +349,7 @@ def test_process_lots(bot, logger, mocker):
         (False, []),
         (True, ['all_assets']),
         (False, [])
-    ]
+    ])
 
     mock_patch_lot = mocker.patch.object(bot, 'patch_lot', autospec=True)
     mock_patch_lot.return_value = True
@@ -521,11 +522,11 @@ def test_process_lots_broken(bot, logger, mocker):
     mock_check_assets.return_value = True
 
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
-    mock_patch_assets.side_effect = [
+    mock_patch_assets.side_effect = iter([
         (False, ['successfully_patched_assets']), (False, []),
         (True, ['']), (False, ['successfully_patched_assets']), (False, []),
         (True, []), (True, [])
-    ]
+    ])
 
     mock_patch_lot = mocker.patch.object(bot, 'patch_lot', autospec=True)
     mock_patch_lot.return_value = False
