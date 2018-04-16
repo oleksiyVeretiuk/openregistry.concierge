@@ -48,3 +48,70 @@ DEFAULTS = {
         }
     }
 }
+
+
+BASIC_ASSETS_WORKLOW = {
+    'verification': {
+        'pre': 'verification',
+        'finish': 'active',
+        'fail': 'pending'
+    },
+    'recomposed': {
+        'pre': '',
+        'finish': 'pending',
+        'fail': ''
+    },
+    'pending.dissolution': {
+        'pre': '',
+        'finish': 'pending',
+        'fail': ''
+    },
+    'pending.sold': {
+        'pre': '',
+        'finish': 'complete',
+        'fail': ''
+    }
+}
+
+ASSET_TO_LOT_TYPE = {
+    'basic': ['basic', 'compound', 'claimrights'],
+    'loki': ['bounce']
+}
+
+NEXT_STATUS_CHANGE = {
+    'lot': {
+        'loki': {
+            'composing': {
+                'pre': '',
+                'finish': 'pending',
+                'fail': 'invalid'
+            },
+        },
+        'basic': {
+            'verification': {
+                'pre': '',
+                'finish': 'active.salable',
+                'fail': 'pending'
+            },
+            'recomposed': {
+                'pre': '',
+                'finish': 'pending',
+                'fail': ''
+            },
+            'pending.dissolution': {
+                'pre': '',
+                'finish': 'dissolved',
+                'fail': ''
+            },
+            'pending.sold': {
+                'pre': '',
+                'finish': 'sold',
+                'fail': ''
+            }
+        }
+    },
+    'asset': {
+        'basic': BASIC_ASSETS_WORKLOW,
+        'loki': BASIC_ASSETS_WORKLOW,
+    }
+}
