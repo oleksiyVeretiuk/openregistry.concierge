@@ -483,5 +483,69 @@
          },
          "quantity":5
       }
+   },
+
+   {
+   "data":{
+      "status":"pending",
+      "relatedLot":"cb942c8bc2b9439fa97fdfd261a833ef",
+      "classification":{
+         "scheme":"CPV",
+         "description":"Земельні ділянки",
+         "id":"37452200-3"
+      },
+      "title":"Земля для космодрому 11",
+      "assetID":"UA-2017-08-29-000007",
+      "assetType":"bounce",
+      "value":{
+         "currency":"UAH",
+         "amount":100,
+         "valueAddedTaxIncluded":true
+      },
+      "id":"0611dfa5dc0a4c6187e0ef0b423a5f72",
+      "date":"2017-08-29T13:54:21.496773+03:00",
+      "unit":{
+         "code":"44617100-9",
+         "name":"item"
+      },
+      "address":{
+         "postalCode":"79000",
+         "countryName":"Україна",
+         "streetAddress":"вул. Банкова 1",
+         "region":"м. Київ",
+         "locality":"м. Київ"
+      },
+      "owner":"broker",
+      "dateModified":"2017-08-29T13:54:21.497529+03:00",
+      "assetHolder": {
+         "name": "Балансоутримувач",
+         "identifier": {
+            "id": "111111-4",
+            "legalName": "Юридична назва",
+            "uri": "http://uri"
+         }
+      },
+      "assetCustodian":{
+         "contactPoint":{
+            "name":"Державне управління справами",
+            "telephone":"0440000000"
+         },
+         "identifier":{
+            "scheme":"UA-EDR",
+            "id":"00037256",
+            "uri":"http://www.dus.gov.ua/"
+         },
+         "name":"Державне управління справами",
+         "address":{
+            "postalCode":"01220",
+            "countryName":"Україна",
+            "streetAddress":"вул. Банкова, 11, корпус 1",
+            "region":"м. Київ",
+            "locality":"м. Київ"
+         }
+      },
+      "quantity":5
    }
+}
+
 ]

@@ -15,6 +15,7 @@ from openprocurement_client.exceptions import (
     RequestFailed,
     UnprocessableEntity
 )
+from openregistry.concierge.constants import KEYS_FOR_LOKI_PATCH
 
 ROOT = os.path.dirname(__file__) + '/data/'
 
@@ -317,6 +318,9 @@ def test_patch_assets_active_fail(bot, logger, mocker):
 
 
 def test_process_lots(bot, logger, mocker):
+    mock_get_asset = mocker.MagicMock()
+    bot.assets_client.get_asset = mock_get_asset
+
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
     # mock_check_lot.side_effect = iter([
     #     True,
@@ -360,6 +364,10 @@ def test_process_lots(bot, logger, mocker):
 
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
+
+    with open(ROOT + 'assets.json') as assets:
+        assets = load(assets)
+
 
     verification_lot = lots[0]['data']
     pending_dissolution_lot = lots[1]['data']
@@ -415,7 +423,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_args_list[2][0] == (verification_lot, 'active', verification_lot['id'])
 
     assert mock_patch_lot.call_count == 1
-    assert mock_patch_lot.call_args[0] == (verification_lot, 'active.salable')
+    assert mock_patch_lot.call_args[0] == (verification_lot, 'active.salable', {})
 
     mock_check_lot.side_effect = iter([
         True
@@ -624,13 +632,17 @@ def test_process_lots(bot, logger, mocker):
         (True, ['all_assets']),
         (True, ['all_assets']),
     ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+    to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
     bot.process_lots(composing_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[18] == 'Processing lot {} in status composing'.format(composing_lot['id'])
     assert mock_check_lot.call_count == 12
     assert mock_check_lot.call_args[0] == (composing_lot,)
-    assert mock_patch_lot.call_args[0] == (composing_lot, 'pending')
+    assert mock_patch_lot.call_args[0] == (composing_lot, 'pending', to_compare)
 
     assert mock_check_assets.call_count == 5
     assert mock_patch_assets.call_args[0] == (composing_lot, 'active', composing_lot['id'])
@@ -752,8 +764,9 @@ def test_check_assets(bot, logger, mocker):
     basic_asset['data']['relatedLot'] = composing_lot['id']
     basic_asset['data']['assetType'] = 'basic'
 
-    bounce_asset = deepcopy(basic_asset)
-    bounce_asset['data']['assetType'] = 'bounce'
+    bounce_asset = deepcopy(assets[9])
+    bounce_asset['data']['status'] = 'pending'
+    bounce_asset['data']['relatedLot'] = composing_lot['id']
 
 
     mock_get_asset.side_effect = [
