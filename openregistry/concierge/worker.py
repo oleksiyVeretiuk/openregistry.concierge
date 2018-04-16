@@ -22,7 +22,7 @@ from .utils import (
     log_broken_lot,
     init_clients
 )
-from .constants import DEFAULTS
+from .constants import DEFAULTS, ASSET_TO_LOT_TYPE, NEXT_STATUS_CHANGE
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +243,8 @@ class BotWorker(object):
             except RequestFailed as e:
                 logger.error('Falied to get asset {0}. Status code: {1}'.format(asset_id, e.status_code))
                 raise RequestFailed('Failed to get assets')
+            if asset.assetType not in ASSET_TO_LOT_TYPE[lot['lotType']]:
+                return False
             related_lot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
             if related_lot_check or asset.status != status:
                 return False
