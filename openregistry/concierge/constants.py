@@ -50,7 +50,7 @@ DEFAULTS = {
 }
 
 
-BASIC_ASSETS_WORKLOW = {
+BASIC_ASSETS_WORKFLOW = {
     'verification': {
         'pre': 'verification',
         'finish': 'active',
@@ -70,6 +70,13 @@ BASIC_ASSETS_WORKLOW = {
         'pre': '',
         'finish': 'complete',
         'fail': ''
+    }
+}
+LOKI_ASSETS_WORKFLOW = {
+    'composing': {
+        'pre': 'verification',
+        'finish': 'active',
+        'fail': 'pending'
     }
 }
 
@@ -111,7 +118,16 @@ NEXT_STATUS_CHANGE = {
         }
     },
     'asset': {
-        'basic': BASIC_ASSETS_WORKLOW,
-        'loki': BASIC_ASSETS_WORKLOW,
+        'basic': BASIC_ASSETS_WORKFLOW,
+        'loki': LOKI_ASSETS_WORKFLOW,
     }
+}
+
+KEYS_FOR_LOKI_PATCH = {
+    'title': 'title',
+    'description': 'description',
+    'decisions': 'decisions',
+    'assetHolder': 'lotHolder',
+    'items': 'items',
+    'assetCustodian': 'lotCustodian',
 }

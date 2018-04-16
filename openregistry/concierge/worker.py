@@ -22,7 +22,12 @@ from .utils import (
     log_broken_lot,
     init_clients
 )
-from .constants import DEFAULTS, ASSET_TO_LOT_TYPE, NEXT_STATUS_CHANGE
+from .constants import (
+    DEFAULTS,
+    ASSET_TO_LOT_TYPE,
+    NEXT_STATUS_CHANGE,
+    KEYS_FOR_LOKI_PATCH
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +42,10 @@ def retry_on_error(exception):
     if isinstance(exception, EXCEPTIONS) and (exception.status_code >= 500 or exception.status_code in [409, 412, 429]):
         return True
     return False
+
+
+def get_next_status(resource, lotType, lotStatus, action):
+    return NEXT_STATUS_CHANGE[resource][lotType][lotStatus][action]
 
 
 class BotWorker(object):
@@ -146,33 +155,47 @@ class BotWorker(object):
                 if assets_available:
                     self._add_assets_to_lot(lot)
                 else:
-                    next_status = 'invalid' if lot['lotType'] == 'loki' else 'pending'
-                    self.patch_lot(lot, next_status)
-        elif lot['status'] == 'pending.dissolution':
-            self._process_lot_and_assets(lot, 'dissolved', 'pending')
-        elif lot['status'] == 'recomposed':
-            self._process_lot_and_assets(lot, 'pending', 'pending')
-        elif lot['status'] == 'pending.sold':
-            self._process_lot_and_assets(lot, 'sold', 'complete')
+                    self.patch_lot(lot, get_next_status('lot', lot['lotType'], lot['status'], 'fail'))
+        else:
+            self._process_lot_and_assets(
+                lot,
+                get_next_status('lot', lot['lotType'], lot['status'], 'finish'),
+                get_next_status('asset', lot['lotType'], lot['status'], 'finish')
+            )
 
     def _add_assets_to_lot(self, lot):
-        result, patched_assets = self.patch_assets(lot, 'verification', lot['id'])
+        result, patched_assets = self.patch_assets(
+            lot,
+            get_next_status('asset', lot['lotType'], lot['status'], 'pre'),
+            lot['id']
+        )
         if result is False:
             if patched_assets:
                 logger.info("Assets {} will be repatched to 'pending'".format(patched_assets))
-                result, _ = self.patch_assets({'assets': patched_assets}, 'pending')
+                result, _ = self.patch_assets({'assets': patched_assets}, get_next_status('asset', lot['lotType'], lot['status'], 'fail'))
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to verification')
         else:
-            result, _ = self.patch_assets(lot, 'active', lot['id'])
+            result, _ = self.patch_assets(
+                lot,
+                get_next_status('asset', lot['lotType'], lot['status'], 'finish'),
+                lot['id']
+            )
             if result is False:
                 logger.info("Assets {} will be repatched to 'pending'".format(lot['assets']))
-                result, _ = self.patch_assets(lot, 'pending')
+                result, _ = self.patch_assets(lot, get_next_status('asset', lot['lotType'], lot['status'], 'fail'))
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
-                next_status = 'pending' if lot['lotType'] == 'loki' else 'active.salable'
-                result = self.patch_lot(lot, next_status)
+                to_patch = {}
+                if lot['lotType'] == 'loki':
+                    asset = self.assets_client.get_asset(lot['assets'][0]).data
+                    to_patch = {l_key: asset.get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+                result = self.patch_lot(
+                    lot,
+                    get_next_status('lot', lot['lotType'], lot['status'], 'finish'),
+                    to_patch
+                )
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
 
@@ -295,7 +318,7 @@ class BotWorker(object):
         logger.info("Successfully patched asset {} to {}".format(asset_id, patch_data['status']),
                     extra={'MESSAGE_ID': 'patch_asset'})
 
-    def patch_lot(self, lot, status):
+    def patch_lot(self, lot, status, extras={}):
         """
         Makes PATCH request to openregistry for lot id from lot object,
         passed as parameter, with client specified in configuration file.
@@ -310,6 +333,9 @@ class BotWorker(object):
                   satisfied, False otherwise.
         """
         try:
+            patch_data = {"status": status}
+            if extras:
+                patch_data.update(extras)
             self.lots_client.patch_lot(lot['id'], {"data": {"status": status}})
         except EXCEPTIONS as e:
             message = e.message
