@@ -746,11 +746,37 @@ def test_check_assets(bot, logger, mocker):
     result = bot.check_assets(dissolved_lot)
     assert result is False
 
+    composing_lot = deepcopy(lots[5]['data'])
+    basic_asset = deepcopy(assets[7])
+    basic_asset['data']['status'] = 'pending'
+    basic_asset['data']['relatedLot'] = composing_lot['id']
+    basic_asset['data']['assetType'] = 'basic'
+
+    bounce_asset = deepcopy(basic_asset)
+    bounce_asset['data']['assetType'] = 'bounce'
+
+
+    mock_get_asset.side_effect = [
+        munchify(basic_asset),
+        munchify(bounce_asset)
+    ]
+
+    composing_lot['assets'] = [basic_asset['data']['id']]
+    result = bot.check_assets(composing_lot)
+    assert result is False
+
+    composing_lot['assets'] = [bounce_asset['data']['id']]
+    result = bot.check_assets(composing_lot)
+    assert result is True
+
+
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[0] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7. Status code: 502"
     assert log_strings[1] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7: Asset could not be found."
     assert log_strings[2] == "Successfully got asset e519404fd0b94305b3b19ec60add05e7"
     assert log_strings[3] == "Successfully got asset 0a7eba27b22a454180d3a49b02a1842f"
+    assert log_strings[4] == "Successfully got asset {}".format(basic_asset['data']['id'])
+    assert log_strings[5] == "Successfully got asset {}".format(bounce_asset['data']['id'])
 
 
 def test_check_lot(bot, logger, mocker):
