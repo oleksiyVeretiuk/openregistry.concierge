@@ -15,6 +15,7 @@ from openprocurement_client.exceptions import (
     RequestFailed,
     UnprocessableEntity
 )
+from openregistry.concierge.constants import KEYS_FOR_LOKI_PATCH
 
 ROOT = os.path.dirname(__file__) + '/data/'
 
@@ -44,6 +45,7 @@ def test_get_lot(bot, logger, mocker):
     assert result.next() == lots[2]['data']
     assert result.next() == lots[3]['data']
     assert result.next() == lots[4]['data']
+    assert result.next() == lots[5]['data']
 
     with pytest.raises(StopIteration):
         result.next()
@@ -61,7 +63,8 @@ def test_run(bot, logger, mocker, almost_always_true):
     for lot in lots:
         lot['data']['rev'] = '123'
     mock_get_lot.return_value = (lot['data'] for lot in lots)
-    mocker.patch('openregistry.concierge.worker.True', almost_always_true(3))
+
+    mocker.patch('openregistry.concierge.worker.IS_BOT_WORKING', almost_always_true(3))
 
     if bot.errors_doc.get(lots[0]['data']['id'], None):
         del bot.errors_doc[lots[0]['data']['id']]
@@ -73,6 +76,8 @@ def test_run(bot, logger, mocker, almost_always_true):
         del bot.errors_doc[lots[3]['data']['id']]
     if bot.errors_doc.get(lots[4]['data']['id'], None):
         del bot.errors_doc[lots[4]['data']['id']]
+    if bot.errors_doc.get(lots[5]['data']['id'], None):
+        del bot.errors_doc[lots[5]['data']['id']]
     bot.db.save(bot.errors_doc)
 
     bot.run()
@@ -81,13 +86,14 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert log_strings[0] == "Starting worker"
 
     assert mock_get_lot.call_count is 3
-    assert mock_process_lots.call_count == 5
+    assert mock_process_lots.call_count == 6
 
     assert mock_process_lots.call_args_list[0][0][0] == lots[0]['data']
     assert mock_process_lots.call_args_list[1][0][0] == lots[1]['data']
     assert mock_process_lots.call_args_list[2][0][0] == lots[2]['data']
     assert mock_process_lots.call_args_list[3][0][0] == lots[3]['data']
     assert mock_process_lots.call_args_list[4][0][0] == lots[4]['data']
+    assert mock_process_lots.call_args_list[5][0][0] == lots[5]['data']
 
     error_lots = deepcopy(lots)
     error_lots[1]['data']['rev'] = '234'
@@ -95,7 +101,7 @@ def test_run(bot, logger, mocker, almost_always_true):
         bot.errors_doc[lot['data']['id']] = lot['data']
     bot.db.save(bot.errors_doc)
 
-    mocker.patch('openregistry.concierge.worker.True', almost_always_true(2))
+    mocker.patch('openregistry.concierge.worker.IS_BOT_WORKING', almost_always_true(2))
     mock_get_lot.return_value = (lot['data'] for lot in lots)
 
     bot.run()
@@ -103,9 +109,9 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert log_strings[0] == "Starting worker"
 
     assert mock_get_lot.call_count is 5
-    assert mock_process_lots.call_count == 6
+    assert mock_process_lots.call_count == 7
 
-    assert mock_process_lots.call_args_list[5][0][0] == error_lots[1]['data']
+    assert mock_process_lots.call_args_list[6][0][0] == error_lots[1]['data']
 
 
 def test_patch_lot(bot, logger, mocker):
@@ -312,43 +318,46 @@ def test_patch_assets_active_fail(bot, logger, mocker):
 
 
 def test_process_lots(bot, logger, mocker):
+    mock_get_asset = mocker.MagicMock()
+    bot.assets_client.get_asset = mock_get_asset
+
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
-    mock_check_lot.side_effect = [
-        True,
-        True,
-        True,
-        True,
-        True,
-        False,
-        True,
-        True,
-        True,
-        True,
-        True
-    ]
+    # mock_check_lot.side_effect = iter([
+    #     True,
+    #     True,
+    #     True,
+    #     True,
+    #     True,
+    #     False,
+    #     True,
+    #     True,
+    #     True,
+    #     True,
+    #     True,
+    # ])
 
     mock_check_assets = mocker.patch.object(bot, 'check_assets', autospec=True)
-    mock_check_assets.side_effect = [
-        True,
-        True,
-        False,
-        RequestFailed(response=munchify({"text": "Request failed."})),
-        False,
-        True
-    ]
+    # mock_check_assets.side_effect = iter([
+    #     True,
+    #     True,
+    #     False,
+    #     RequestFailed(response=munchify({"text": "Request failed."})),
+    #     True,
+    #     True,
+    # ])
 
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
-    mock_patch_assets.side_effect = [
-        (False, []),
-        (True, []),
-        (True, ['all_assets']),
-        (True, ['all_assets']),
-        (False, []),
-        (True, ['all_assets']),
-        (False, []),
-        (True, ['all_assets']),
-        (False, [])
-    ]
+    # mock_patch_assets.side_effect = iter([
+    #     (False, []),
+    #     (True, []),
+    #     (True, ['all_assets']),
+    #     (True, ['all_assets']),
+    #     (False, []),
+    #     (True, ['all_assets']),
+    #     (False, []),
+    #     (True, ['all_assets']),
+    #     (False, [])
+    # ])
 
     mock_patch_lot = mocker.patch.object(bot, 'patch_lot', autospec=True)
     mock_patch_lot.return_value = True
@@ -356,10 +365,24 @@ def test_process_lots(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
 
+    with open(ROOT + 'assets.json') as assets:
+        assets = load(assets)
+
+
     verification_lot = lots[0]['data']
     pending_dissolution_lot = lots[1]['data']
 
     # status == 'verification'
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (False, []),
+        (True, ['all_assets']),
+    ])
     bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(False, []), (True, []]; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -374,6 +397,16 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_count == 1
     assert mock_patch_assets.call_args_list[0][0] == (verification_lot, 'verification', verification_lot['id'])
 
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+    ])
     bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -390,8 +423,16 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_args_list[2][0] == (verification_lot, 'active', verification_lot['id'])
 
     assert mock_patch_lot.call_count == 1
-    assert mock_patch_lot.call_args[0] == (verification_lot, 'active.salable')
+    assert mock_patch_lot.call_args[0] == (verification_lot, 'active.salable', {})
 
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        False
+    ])
+    mock_patch_assets.side_effect = iter([
+    ])
     bot.process_lots(verification_lot)  # assets_available: False; patch_assets: None; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -406,6 +447,14 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_lot.call_count == 2
     assert mock_patch_lot.call_args[0] == (verification_lot, 'pending')
 
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        RequestFailed(response=munchify({"text": "Request failed."}))
+    ])
+    mock_patch_assets.side_effect = iter([
+    ])
     bot.process_lots(verification_lot)  # assets_available: raises exception; patch_assets: None; check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -419,6 +468,15 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_args[0] == (verification_lot,)
 
     # status == 'pending.dissolution'
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        None
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets'])
+    ])
     bot.process_lots(pending_dissolution_lot)  # assets_available: None; patch_assets: (True, []); check_lot: True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -431,6 +489,13 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_args[0] == (pending_dissolution_lot,)
 
     # lot is not available
+    mock_check_lot.side_effect = iter([
+        False
+    ])
+    mock_check_assets.side_effect = iter([
+    ])
+    mock_patch_assets.side_effect = iter([
+    ])
     bot.process_lots(pending_dissolution_lot)  # assets_available: None; patch_assets: None; check_lot: False
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -440,6 +505,16 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_args[0] == (pending_dissolution_lot,)
 
     pending_dissolution_lot = lots[2]['data']
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        False
+    ])
+    mock_patch_assets.side_effect = iter([
+        (False, []),
+        (True, ['all_assets'])
+    ])
     bot.process_lots(pending_dissolution_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -452,7 +527,15 @@ def test_process_lots(bot, logger, mocker):
 
     recomposed_lot = lots[3]['data']
 
-
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+    ])
     bot.process_lots(recomposed_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -466,7 +549,16 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending')
 
-
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (False, []),
+        (True, ['all_assets']),
+    ])
     bot.process_lots(recomposed_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -480,6 +572,15 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending')
 
 
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+    ])
     pending_sold_lot = lots[4]['data']
 
 
@@ -497,6 +598,16 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
 
 
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (False, []),
+        (True, ['all_assets']),
+    ])
     bot.process_lots(pending_sold_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -510,6 +621,33 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
 
 
+    composing_lot = lots[5]['data']
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+    ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+    to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+    bot.process_lots(composing_lot)
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[18] == 'Processing lot {} in status composing'.format(composing_lot['id'])
+    assert mock_check_lot.call_count == 12
+    assert mock_check_lot.call_args[0] == (composing_lot,)
+    assert mock_patch_lot.call_args[0] == (composing_lot, 'pending', to_compare)
+
+    assert mock_check_assets.call_count == 5
+    assert mock_patch_assets.call_args[0] == (composing_lot, 'active', composing_lot['id'])
+
+
 def test_process_lots_broken(bot, logger, mocker):
 
     mock_log_broken_lot = mocker.patch('openregistry.concierge.worker.log_broken_lot', autospec=True)
@@ -521,11 +659,11 @@ def test_process_lots_broken(bot, logger, mocker):
     mock_check_assets.return_value = True
 
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
-    mock_patch_assets.side_effect = [
+    mock_patch_assets.side_effect = iter([
         (False, ['successfully_patched_assets']), (False, []),
         (True, ['']), (False, ['successfully_patched_assets']), (False, []),
         (True, []), (True, [])
-    ]
+    ])
 
     mock_patch_lot = mocker.patch.object(bot, 'patch_lot', autospec=True)
     mock_patch_lot.return_value = False
@@ -620,11 +758,38 @@ def test_check_assets(bot, logger, mocker):
     result = bot.check_assets(dissolved_lot)
     assert result is False
 
+    composing_lot = deepcopy(lots[5]['data'])
+    basic_asset = deepcopy(assets[7])
+    basic_asset['data']['status'] = 'pending'
+    basic_asset['data']['relatedLot'] = composing_lot['id']
+    basic_asset['data']['assetType'] = 'basic'
+
+    bounce_asset = deepcopy(assets[9])
+    bounce_asset['data']['status'] = 'pending'
+    bounce_asset['data']['relatedLot'] = composing_lot['id']
+
+
+    mock_get_asset.side_effect = [
+        munchify(basic_asset),
+        munchify(bounce_asset)
+    ]
+
+    composing_lot['assets'] = [basic_asset['data']['id']]
+    result = bot.check_assets(composing_lot)
+    assert result is False
+
+    composing_lot['assets'] = [bounce_asset['data']['id']]
+    result = bot.check_assets(composing_lot)
+    assert result is True
+
+
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[0] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7. Status code: 502"
     assert log_strings[1] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7: Asset could not be found."
     assert log_strings[2] == "Successfully got asset e519404fd0b94305b3b19ec60add05e7"
     assert log_strings[3] == "Successfully got asset 0a7eba27b22a454180d3a49b02a1842f"
+    assert log_strings[4] == "Successfully got asset {}".format(basic_asset['data']['id'])
+    assert log_strings[5] == "Successfully got asset {}".format(bounce_asset['data']['id'])
 
 
 def test_check_lot(bot, logger, mocker):
