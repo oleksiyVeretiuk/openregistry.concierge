@@ -174,7 +174,10 @@ class BotWorker(object):
                 logger.info("Assets {} will be repatched to 'pending'".format(patched_assets))
                 result, _ = self.patch_assets({'assets': patched_assets}, get_next_status('asset', lot['lotType'], lot['status'], 'fail'))
                 if result is False:
-                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to verification')
+                    log_broken_lot(
+                        self.db,
+                        logger,
+                        self.errors_doc, lot, 'patching assets to {}'.format(get_next_status('asset', lot['lotType'], lot['status'], 'pre')))
         else:
             result, _ = self.patch_assets(
                 lot,
@@ -190,7 +193,11 @@ class BotWorker(object):
                 to_patch = {}
                 if lot['lotType'] == 'loki':
                     asset = self.assets_client.get_asset(lot['assets'][0]).data
-                    to_patch = {l_key: asset.get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+                    to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+                    to_patch['decisions'] = [
+                        lot['decisions'][0],
+                        asset['decisions'][0]
+                    ]
                 result = self.patch_lot(
                     lot,
                     get_next_status('lot', lot['lotType'], lot['status'], 'finish'),
