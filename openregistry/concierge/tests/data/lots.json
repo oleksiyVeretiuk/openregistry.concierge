@@ -210,6 +210,12 @@
                "locality":"м. Київ"
             }
          },
+         "decisions": [
+            {
+               "decisionDate": "2017-08-29T13:05:00.157430+03:00",
+               "decisionID": "decisionID"
+            }
+         ],
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
          "assets":[

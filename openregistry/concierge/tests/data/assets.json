@@ -525,6 +525,12 @@
             "uri": "http://uri"
          }
       },
+      "decisions": [
+         {
+            "decisionDate": "2017-08-29T13:05:00.157430+03:00",
+            "decisionID": "assetDecisionID"
+         }
+      ],
       "assetCustodian":{
          "contactPoint":{
             "name":"Державне управління справами",
