@@ -10,7 +10,7 @@ from .design import sync_design
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
 STATUS_FILTER = """function(doc, req) {
-  if(doc.status == "verification" || doc.status == "pending.dissolution" || doc.status == "recomposed" || doc.status == "pending.sold") {return true;}
+  if(doc.status == "verification" || doc.status == "pending.dissolution" || doc.status == "recomposed" || doc.status == "pending.sold" || doc.status == "composing") {return true;}
     return false;
 }"""
 
@@ -83,7 +83,9 @@ def continuous_changes_feed(db, logger, limit=100, filter_doc='lots/status'):
                     'rev': row['doc']['_rev'],
                     'status': row['doc']['status'],
                     'assets': row['doc']['assets'],
-                    'lotID': row['doc']['lotID']
+                    'lotID': row['doc']['lotID'],
+                    'lotType': row['doc']['lotType'],
+                    'decisions': row['doc']['decisions']
                 }
                 yield item
         else:
