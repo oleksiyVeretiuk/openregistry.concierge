@@ -343,7 +343,7 @@ class BotWorker(object):
             patch_data = {"status": status}
             if extras:
                 patch_data.update(extras)
-            self.lots_client.patch_lot(lot['id'], {"data": {"status": status}})
+            self.lots_client.patch_lot(lot['id'], {"data": patch_data})
         except EXCEPTIONS as e:
             message = e.message
             if e.status_code >= 500:
