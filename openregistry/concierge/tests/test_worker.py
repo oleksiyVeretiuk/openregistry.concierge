@@ -636,6 +636,10 @@ def test_process_lots(bot, logger, mocker):
         munchify(assets[9])
     ])
     to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+    to_compare['decisions'] = [
+        composing_lot['decisions'][0],
+        assets[9]['data']['decisions'][0],
+    ]
     bot.process_lots(composing_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')

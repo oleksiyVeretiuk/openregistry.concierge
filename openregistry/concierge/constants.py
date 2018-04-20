@@ -77,6 +77,16 @@ LOKI_ASSETS_WORKFLOW = {
         'pre': 'verification',
         'finish': 'active',
         'fail': 'pending'
+    },
+    'pending.dissolution': {
+        'pre': '',
+        'finish': 'pending',
+        'fail': ''
+    },
+    'pending.sold': {
+        'pre': '',
+        'finish': 'complete',
+        'fail': ''
     }
 }
 
@@ -93,6 +103,16 @@ NEXT_STATUS_CHANGE = {
                 'finish': 'pending',
                 'fail': 'invalid'
             },
+            'pending.dissolution': {
+                'pre': '',
+                'finish': 'dissolved',
+                'fail': ''
+            },
+            'pending.sold': {
+                'pre': '',
+                'finish': 'sold',
+                'fail': ''
+            }
         },
         'basic': {
             'verification': {
@@ -126,7 +146,6 @@ NEXT_STATUS_CHANGE = {
 KEYS_FOR_LOKI_PATCH = {
     'title': 'title',
     'description': 'description',
-    'decisions': 'decisions',
     'assetHolder': 'lotHolder',
     'items': 'items',
     'assetCustodian': 'lotCustodian',
