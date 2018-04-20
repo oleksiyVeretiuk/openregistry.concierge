@@ -77,6 +77,16 @@ LOKI_ASSETS_WORKFLOW = {
         'pre': 'verification',
         'finish': 'active',
         'fail': 'pending'
+    },
+    'pending.dissolution': {
+        'pre': '',
+        'finish': 'pending',
+        'fail': ''
+    },
+    'pending.sold': {
+        'pre': '',
+        'finish': 'complete',
+        'fail': ''
     }
 }
 
@@ -93,6 +103,16 @@ NEXT_STATUS_CHANGE = {
                 'finish': 'pending',
                 'fail': 'invalid'
             },
+            'pending.dissolution': {
+                'pre': '',
+                'finish': 'dissolved',
+                'fail': ''
+            },
+            'pending.sold': {
+                'pre': '',
+                'finish': 'sold',
+                'fail': ''
+            }
         },
         'basic': {
             'verification': {
