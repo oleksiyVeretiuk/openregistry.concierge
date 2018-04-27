@@ -10,7 +10,15 @@ from .design import sync_design
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
 STATUS_FILTER = """function(doc, req) {
-  if(doc.status == "verification" || doc.status == "pending.dissolution" || doc.status == "recomposed" || doc.status == "pending.sold" || doc.status == "composing") {return true;}
+  if(
+    doc.status == "verification" || 
+    doc.status == "pending.dissolution" || 
+    doc.status == "recomposed" || 
+    doc.status == "pending.sold" || 
+    doc.status == "composing" ||
+    doc.status == "pending.deleted") {
+        return true;
+    }
     return false;
 }"""
 
