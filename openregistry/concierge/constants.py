@@ -66,6 +66,11 @@ BASIC_ASSETS_WORKFLOW = {
         'finish': 'pending',
         'fail': ''
     },
+    'pending.deleted': {
+        'pre': '',
+        'finish': 'pending',
+        'fail': ''
+    },
     'pending.sold': {
         'pre': '',
         'finish': 'complete',
@@ -86,6 +91,11 @@ LOKI_ASSETS_WORKFLOW = {
     'pending.sold': {
         'pre': '',
         'finish': 'complete',
+        'fail': ''
+    },
+    'pending.deleted': {
+        'pre': '',
+        'finish': 'pending',
         'fail': ''
     }
 }
@@ -112,7 +122,12 @@ NEXT_STATUS_CHANGE = {
                 'pre': '',
                 'finish': 'sold',
                 'fail': ''
-            }
+            },
+            'pending.deleted': {
+                'pre': '',
+                'finish': 'deleted',
+                'fail': ''
+            },
         },
         'basic': {
             'verification': {
@@ -128,6 +143,11 @@ NEXT_STATUS_CHANGE = {
             'pending.dissolution': {
                 'pre': '',
                 'finish': 'dissolved',
+                'fail': ''
+            },
+            'pending.deleted': {
+                'pre': '',
+                'finish': 'deleted',
                 'fail': ''
             },
             'pending.sold': {

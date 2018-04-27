@@ -46,6 +46,7 @@ def test_get_lot(bot, logger, mocker):
     assert result.next() == lots[3]['data']
     assert result.next() == lots[4]['data']
     assert result.next() == lots[5]['data']
+    assert result.next() == lots[6]['data']
 
     with pytest.raises(StopIteration):
         result.next()
@@ -78,6 +79,8 @@ def test_run(bot, logger, mocker, almost_always_true):
         del bot.errors_doc[lots[4]['data']['id']]
     if bot.errors_doc.get(lots[5]['data']['id'], None):
         del bot.errors_doc[lots[5]['data']['id']]
+    # if bot.errors_doc.get(lots[6]['data']['id'], None):
+    #     del bot.errors_doc[lots[6]['data']['id']]
     bot.db.save(bot.errors_doc)
 
     bot.run()
@@ -86,7 +89,7 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert log_strings[0] == "Starting worker"
 
     assert mock_get_lot.call_count is 3
-    assert mock_process_lots.call_count == 6
+    assert mock_process_lots.call_count == 7
 
     assert mock_process_lots.call_args_list[0][0][0] == lots[0]['data']
     assert mock_process_lots.call_args_list[1][0][0] == lots[1]['data']
@@ -94,6 +97,7 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert mock_process_lots.call_args_list[3][0][0] == lots[3]['data']
     assert mock_process_lots.call_args_list[4][0][0] == lots[4]['data']
     assert mock_process_lots.call_args_list[5][0][0] == lots[5]['data']
+    assert mock_process_lots.call_args_list[6][0][0] == lots[6]['data']
 
     error_lots = deepcopy(lots)
     error_lots[1]['data']['rev'] = '234'
@@ -109,9 +113,9 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert log_strings[0] == "Starting worker"
 
     assert mock_get_lot.call_count is 5
-    assert mock_process_lots.call_count == 7
+    assert mock_process_lots.call_count == 8
 
-    assert mock_process_lots.call_args_list[6][0][0] == error_lots[1]['data']
+    assert mock_process_lots.call_args_list[7][0][0] == error_lots[1]['data']
 
 
 def test_patch_lot(bot, logger, mocker):
@@ -650,6 +654,33 @@ def test_process_lots(bot, logger, mocker):
 
     assert mock_check_assets.call_count == 5
     assert mock_patch_assets.call_args[0] == (composing_lot, 'active', composing_lot['id'])
+
+    # Test pending.deleted lot
+    pending_deleted_lot = lots[6]['data']
+    pending_deleted_lot['assets'] = [assets[9]]
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+    ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+    bot.process_lots(pending_deleted_lot)
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[19] == 'Processing lot {} in status pending.deleted'.format(pending_deleted_lot['id'])
+    assert mock_check_lot.call_count == 13
+    assert mock_check_lot.call_args[0] == (pending_deleted_lot,)
+    assert mock_patch_lot.call_args[0] == (pending_deleted_lot, 'deleted')
+
+    assert mock_check_assets.call_count == 5
+    assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending')
 
 
 def test_process_lots_broken(bot, logger, mocker):
