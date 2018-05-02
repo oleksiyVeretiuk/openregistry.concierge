@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold', 'pending.deleted', 'composing')
+HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold', 'pending.deleted')
 
 IS_BOT_WORKING = True
 
@@ -146,7 +146,7 @@ class BotWorker(object):
             logger.info("Skipping lot {}".format(lot['id']))
             return
         logger.info("Processing lot {} in status {}".format(lot['id'], lot['status']))
-        if lot['status'] in ['verification', 'composing']:
+        if lot['status'] in ['verification']:
             try:
                 assets_available = self.check_assets(lot)
             except RequestFailed:

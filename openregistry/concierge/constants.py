@@ -78,7 +78,7 @@ BASIC_ASSETS_WORKFLOW = {
     }
 }
 LOKI_ASSETS_WORKFLOW = {
-    'composing': {
+    'verification': {
         'pre': 'verification',
         'finish': 'active',
         'fail': 'pending'
@@ -108,7 +108,7 @@ ASSET_TO_LOT_TYPE = {
 NEXT_STATUS_CHANGE = {
     'lot': {
         'loki': {
-            'composing': {
+            'verification': {
                 'pre': '',
                 'finish': 'pending',
                 'fail': 'invalid'
