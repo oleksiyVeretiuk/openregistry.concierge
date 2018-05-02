@@ -184,7 +184,7 @@
    },
    {
       "data":{
-         "status":"composing",
+         "status":"verification",
          "lotID":"UA-2017-08-29-000005",
          "description":"Lot with new client",
          "title":"Lot with new client",
