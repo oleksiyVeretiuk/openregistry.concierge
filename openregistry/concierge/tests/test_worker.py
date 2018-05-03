@@ -625,7 +625,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
 
 
-    composing_lot = lots[5]['data']
+    loki_verfication_lot = lots[5]['data']
     mock_check_lot.side_effect = iter([
         True
     ])
@@ -641,19 +641,45 @@ def test_process_lots(bot, logger, mocker):
     ])
     to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
     to_compare['decisions'] = [
-        composing_lot['decisions'][0],
+        loki_verfication_lot['decisions'][0],
         assets[9]['data']['decisions'][0],
     ]
-    bot.process_lots(composing_lot)
+    bot.process_lots(loki_verfication_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[18] == 'Processing lot {} in status composing'.format(composing_lot['id'])
+    assert log_strings[18] == 'Processing lot {} in status verification'.format(loki_verfication_lot['id'])
     assert mock_check_lot.call_count == 12
-    assert mock_check_lot.call_args[0] == (composing_lot,)
-    assert mock_patch_lot.call_args[0] == (composing_lot, 'pending', to_compare)
+    assert mock_check_lot.call_args[0] == (loki_verfication_lot,)
+    assert mock_patch_lot.call_args[0] == (loki_verfication_lot, 'pending', to_compare)
 
     assert mock_check_assets.call_count == 5
-    assert mock_patch_assets.call_args[0] == (composing_lot, 'active', composing_lot['id'])
+    assert mock_patch_assets.call_args[0] == (loki_verfication_lot, 'active', loki_verfication_lot['id'])
+
+    # When something wrong
+    loki_verfication_lot = lots[5]['data']
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        False
+    ])
+    mock_patch_assets.side_effect = iter([
+        (False, [])
+    ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+    bot.process_lots(loki_verfication_lot)
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[19] == 'Processing lot {} in status verification'.format(loki_verfication_lot['id'])
+    assert mock_check_lot.call_count == 13
+    assert mock_check_lot.call_args[0] == (loki_verfication_lot,)
+    assert mock_patch_lot.call_args[0] == (loki_verfication_lot, 'invalid')
+
+    assert mock_check_assets.call_count == 6
+    assert mock_patch_assets.call_args[0] == (loki_verfication_lot, 'active', loki_verfication_lot['id'])
+
 
     # Test pending.deleted lot
     pending_deleted_lot = lots[6]['data']
@@ -674,12 +700,12 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_deleted_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[19] == 'Processing lot {} in status pending.deleted'.format(pending_deleted_lot['id'])
-    assert mock_check_lot.call_count == 13
+    assert log_strings[20] == 'Processing lot {} in status pending.deleted'.format(pending_deleted_lot['id'])
+    assert mock_check_lot.call_count == 14
     assert mock_check_lot.call_args[0] == (pending_deleted_lot,)
     assert mock_patch_lot.call_args[0] == (pending_deleted_lot, 'deleted')
 
-    assert mock_check_assets.call_count == 5
+    assert mock_check_assets.call_count == 6
     assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending')
 
 
