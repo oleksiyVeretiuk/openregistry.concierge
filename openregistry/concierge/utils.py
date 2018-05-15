@@ -93,7 +93,7 @@ def continuous_changes_feed(db, logger, limit=100, filter_doc='lots/status'):
                     'assets': row['doc']['assets'],
                     'lotID': row['doc']['lotID'],
                     'lotType': row['doc']['lotType'],
-                    'decisions': row['doc']['decisions']
+                    'decisions': row['doc'].get('decisions')
                 }
                 yield item
         else:
