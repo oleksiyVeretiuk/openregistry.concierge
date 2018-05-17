@@ -165,7 +165,11 @@ NEXT_STATUS_CHANGE = {
 
 KEYS_FOR_LOKI_PATCH = {
     'title': 'title',
+    'title_ru': 'title_ru',
+    'title_en': 'title_en',
     'description': 'description',
+    'description_ru': 'description_ru',
+    'description_en': 'description_en',
     'assetHolder': 'lotHolder',
     'items': 'items',
     'assetCustodian': 'lotCustodian',

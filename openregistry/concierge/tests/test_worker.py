@@ -819,15 +819,15 @@ def test_check_assets(bot, logger, mocker):
     result = bot.check_assets(dissolved_lot)
     assert result is False
 
-    composing_lot = deepcopy(lots[5]['data'])
+    loki_verification_lot = deepcopy(lots[5]['data'])
     basic_asset = deepcopy(assets[7])
     basic_asset['data']['status'] = 'pending'
-    basic_asset['data']['relatedLot'] = composing_lot['id']
+    basic_asset['data']['relatedLot'] = loki_verification_lot['id']
     basic_asset['data']['assetType'] = 'basic'
 
     bounce_asset = deepcopy(assets[9])
     bounce_asset['data']['status'] = 'pending'
-    bounce_asset['data']['relatedLot'] = composing_lot['id']
+    bounce_asset['data']['relatedLot'] = loki_verification_lot['id']
 
 
     mock_get_asset.side_effect = [
@@ -835,12 +835,12 @@ def test_check_assets(bot, logger, mocker):
         munchify(bounce_asset)
     ]
 
-    composing_lot['assets'] = [basic_asset['data']['id']]
-    result = bot.check_assets(composing_lot)
+    loki_verification_lot['assets'] = [basic_asset['data']['id']]
+    result = bot.check_assets(loki_verification_lot)
     assert result is False
 
-    composing_lot['assets'] = [bounce_asset['data']['id']]
-    result = bot.check_assets(composing_lot)
+    loki_verification_lot['assets'] = [bounce_asset['data']['id']]
+    result = bot.check_assets(loki_verification_lot)
     assert result is True
 
 
