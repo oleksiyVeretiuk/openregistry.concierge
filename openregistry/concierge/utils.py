@@ -15,7 +15,6 @@ STATUS_FILTER = """function(doc, req) {
     doc.status == "pending.dissolution" || 
     doc.status == "recomposed" || 
     doc.status == "pending.sold" || 
-    doc.status == "composing" ||
     doc.status == "pending.deleted") {
         return true;
     }
