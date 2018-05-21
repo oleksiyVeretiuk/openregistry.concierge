@@ -5,10 +5,20 @@ from logging import addLevelName, Logger
 
 from openprocurement_client.resources.lots import LotsClient
 from openprocurement_client.resources.assets import AssetsClient
+from openprocurement_client.exceptions import (
+    Forbidden,
+    RequestFailed,
+    ResourceNotFound,
+    UnprocessableEntity,
+    Conflict,
+    PreconditionFailed,
+)
 
+from openregistry.concierge.constants import NEXT_STATUS_CHANGE
 from .design import sync_design
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
+EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 STATUS_FILTER = """function(doc, req) {
   if(
     doc.status == "verification" || 
@@ -166,3 +176,13 @@ def init_clients(config, logger):
         raise exceptions[0]
 
     return clients_from_config
+
+
+def retry_on_error(exception):
+    if isinstance(exception, EXCEPTIONS) and (exception.status_code >= 500 or exception.status_code in [409, 412, 429]):
+        return True
+    return False
+
+
+def get_next_status(status_mapping, resource, lotStatus, action):
+    return status_mapping[resource][lotStatus][action]
