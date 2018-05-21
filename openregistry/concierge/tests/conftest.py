@@ -60,6 +60,8 @@ def db(request):
 def bot(mocker, db):
     mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
+    mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
+    mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
     return BotWorker(TEST_CONFIG)
 
 
