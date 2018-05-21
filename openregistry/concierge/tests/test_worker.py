@@ -4,18 +4,9 @@ from copy import deepcopy
 from json import load
 
 import pytest
-from munch import munchify
 
 from openregistry.concierge.tests.conftest import TEST_CONFIG
-from openregistry.concierge.worker import logger as LOGGER
 from openregistry.concierge.worker import BotWorker
-from openprocurement_client.exceptions import (
-    Forbidden,
-    ResourceNotFound,
-    RequestFailed,
-    UnprocessableEntity
-)
-from openregistry.concierge.constants import KEYS_FOR_LOKI_PATCH
 
 ROOT = os.path.dirname(__file__) + '/data/'
 

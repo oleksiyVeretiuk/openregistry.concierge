@@ -15,7 +15,7 @@ from openprocurement_client.exceptions import (
     RequestFailed,
     UnprocessableEntity
 )
-from openregistry.concierge.constants import KEYS_FOR_LOKI_PATCH
+from openregistry.concierge.loki.constants import KEYS_FOR_LOKI_PATCH
 
 ROOT = os.path.dirname(__file__) + '/data/'
 

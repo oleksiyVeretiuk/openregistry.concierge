@@ -14,7 +14,6 @@ from openprocurement_client.exceptions import (
     PreconditionFailed,
 )
 
-from openregistry.concierge.constants import NEXT_STATUS_CHANGE
 from .design import sync_design
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
