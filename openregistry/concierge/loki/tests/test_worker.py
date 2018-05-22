@@ -6,7 +6,7 @@ from json import load
 import pytest
 from munch import munchify
 
-from openregistry.concierge.tests.conftest import TEST_CONFIG
+from openregistry.concierge.loki.tests.conftest import TEST_CONFIG
 from openregistry.concierge.loki.processing import logger as LOGGER
 from openregistry.concierge.loki.processing import ProcessingLoki
 from openprocurement_client.exceptions import (
@@ -21,13 +21,14 @@ ROOT = os.path.dirname(__file__) + '/data/'
 
 
 def test_processing_loki_init(db, logger, mocker):
-    mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
-    mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    ProcessingLoki(TEST_CONFIG)
-    log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == 'lots_client - ok'
-    assert log_strings[1] == 'assets_client - ok'
-    assert log_strings[2] == 'couchdb - ok'
+    lots_client = mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True).return_value
+    assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
+    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
+    errors_doc = db.get(TEST_CONFIG['errors_doc'])
+    processing = ProcessingLoki(TEST_CONFIG['lots']['loki'], clients, errors_doc)
+    assert set(processing.allowed_asset_types) == {'bounce', 'domain'}
+    assert set(processing.handled_lot_types) == {'loki'}
+
 
 
 def test_patch_lot(bot, logger, mocker):
@@ -708,8 +709,8 @@ def test_check_assets(bot, logger, mocker):
 
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7. Status code: 502"
-    assert log_strings[1] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7: Asset could not be found."
+    assert log_strings[0] == "Failed to get asset e519404fd0b94305b3b19ec60add05e7. Status code: 502"
+    assert log_strings[1] == "Failed to get asset e519404fd0b94305b3b19ec60add05e7: Asset could not be found."
     assert log_strings[2] == "Successfully got asset e519404fd0b94305b3b19ec60add05e7"
     assert log_strings[3] == "Successfully got asset 0a7eba27b22a454180d3a49b02a1842f"
     assert log_strings[4] == "Successfully got asset {}".format(basic_asset['data']['id'])
@@ -748,8 +749,8 @@ def test_check_lot(bot, logger, mocker):
     assert result is False
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Falied to get lot 9ee8f769438e403ebfb17b2240aedcf1. Status code: 502"
-    assert log_strings[1] == "Falied to get lot 9ee8f769438e403ebfb17b2240aedcf1: Lot could not be found."
+    assert log_strings[0] == "Failed to get lot 9ee8f769438e403ebfb17b2240aedcf1. Status code: 502"
+    assert log_strings[1] == "Failed to get lot 9ee8f769438e403ebfb17b2240aedcf1: Lot could not be found."
     assert log_strings[2] == "Successfully got lot 9ee8f769438e403ebfb17b2240aedcf1"
     assert log_strings[3] == "Successfully got lot 9ee8f769438e403ebfb17b2240aedcf1"
     assert log_strings[4] == "Lot 9ee8f769438e403ebfb17b2240aedcf1 can not be processed in current status ('pending')"
