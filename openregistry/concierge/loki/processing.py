@@ -21,10 +21,8 @@ from openregistry.concierge.utils import (
     log_broken_lot,
     get_next_status,
     retry_on_error,
-    init_clients
 )
 from openregistry.concierge.loki.constants import (
-    ALLOWED_ASSET_TYPES,
     KEYS_FOR_LOKI_PATCH,
     NEXT_STATUS_CHANGE
 )
@@ -40,15 +38,28 @@ IS_BOT_WORKING = True
 
 class ProcessingLoki(object):
 
-    def __init__(self, config):
+    def __init__(self, config, clients, errors_doc):
         """
         Args:
             config: dictionary with configuration data
         """
         self.config = config
-        for key, item in init_clients(config, logger).items():
+        self.allowed_asset_types = []
+        self.handled_lot_types = []
+
+        self._register_allowed_assets()
+        self._register_handled_lot_types()
+
+        for key, item in clients.items():
             setattr(self, key, item)
-        self.errors_doc = self.db.get(self.config['errors_doc'])
+        self.errors_doc = errors_doc
+
+    def _register_allowed_assets(self):
+        for _, asset_aliases in self.config.get('assets', {}).items():
+            self.allowed_asset_types += asset_aliases
+
+    def _register_handled_lot_types(self):
+        self.handled_lot_types += self.config.get('aliases', [])
 
     def process_lots(self, lot):
         """
@@ -135,14 +146,12 @@ class ProcessingLoki(object):
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
-                to_patch = {}
-                if lot['lotType'] == 'loki':
-                    asset = self.assets_client.get_asset(lot['assets'][0]).data
-                    to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
-                    to_patch['decisions'] = [
-                        lot['decisions'][0],
-                        asset['decisions'][0]
-                    ]
+                asset = self.assets_client.get_asset(lot['assets'][0]).data
+                to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+                to_patch['decisions'] = [
+                    lot['decisions'][0],
+                    asset['decisions'][0]
+                ]
                 result = self.patch_lot(
                     lot,
                     get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
@@ -175,10 +184,10 @@ class ProcessingLoki(object):
             actual_status = self.lots_client.get_lot(lot['id']).data.status
             logger.info('Successfully got lot {0}'.format(lot['id']))
         except ResourceNotFound as e:
-            logger.error('Falied to get lot {0}: {1}'.format(lot['id'], e.message))
+            logger.error('Failed to get lot {0}: {1}'.format(lot['id'], e.message))
             return False
         except RequestFailed as e:
-            logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
+            logger.error('Failed to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
         if lot['status'] != actual_status:
             logger.warning(
@@ -213,13 +222,13 @@ class ProcessingLoki(object):
                 asset = self.assets_client.get_asset(asset_id).data
                 logger.info('Successfully got asset {}'.format(asset_id))
             except ResourceNotFound as e:
-                logger.error('Falied to get asset {0}: {1}'.format(asset_id,
+                logger.error('Failed to get asset {0}: {1}'.format(asset_id,
                                                                    e.message))
                 return False
             except RequestFailed as e:
-                logger.error('Falied to get asset {0}. Status code: {1}'.format(asset_id, e.status_code))
+                logger.error('Failed to get asset {0}. Status code: {1}'.format(asset_id, e.status_code))
                 raise RequestFailed('Failed to get assets')
-            if asset.assetType not in ALLOWED_ASSET_TYPES:
+            if asset.assetType not in self.allowed_asset_types:
                 return False
             related_lot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
             if related_lot_check or asset.status != status:
