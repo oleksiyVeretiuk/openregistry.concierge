@@ -14,6 +14,20 @@ DEFAULTS = {
             "url": "http://0.0.0.0:6543",
             "token": "concierge",
             "version": 0.1
+        },
+        "basic": {
+            'aliases': ["basic"],
+            'assets': {
+                "basic": ["basic"],
+                "compound": ["compound"],
+                "claimRights": ["claimRights"]
+            }
+        },
+        "loki": {
+            'aliases': ["loki"],
+            'assets': {
+                "bounce": ["bounce", "domain"]
+            }
         }
     },
     "assets": {
