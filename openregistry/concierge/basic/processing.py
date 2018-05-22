@@ -18,10 +18,8 @@ from openregistry.concierge.utils import (
     log_broken_lot,
     get_next_status,
     retry_on_error,
-    init_clients
 )
 from openregistry.concierge.basic.constants import (
-    ASSET_TO_LOT_TYPE,
     NEXT_STATUS_CHANGE
 )
 
@@ -34,15 +32,28 @@ HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pendin
 
 class ProcessingBasic(object):
 
-    def __init__(self, config):
+    def __init__(self, config, clients, errors_doc):
         """
         Args:
             config: dictionary with configuration data
         """
+        self.allowed_asset_types = []
+        self.handled_lot_types = []
         self.config = config
-        for key, item in init_clients(config, logger).items():
+
+        self._register_allowed_assets()
+        self._register_handled_lot_types()
+
+        for key, item in clients.items():
             setattr(self, key, item)
-        self.errors_doc = self.db.get(self.config['errors_doc'])
+        self.errors_doc = errors_doc
+
+    def _register_allowed_assets(self):
+        for _, asset_aliases in self.config.get('assets', {}).items():
+            self.allowed_asset_types += asset_aliases
+
+    def _register_handled_lot_types(self):
+        self.handled_lot_types += self.config.get('aliases', [])
 
     def process_lots(self, lot):
         """
@@ -160,10 +171,10 @@ class ProcessingBasic(object):
             actual_status = self.lots_client.get_lot(lot['id']).data.status
             logger.info('Successfully got lot {0}'.format(lot['id']))
         except ResourceNotFound as e:
-            logger.error('Falied to get lot {0}: {1}'.format(lot['id'], e.message))
+            logger.error('Failed to get lot {0}: {1}'.format(lot['id'], e.message))
             return False
         except RequestFailed as e:
-            logger.error('Falied to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
+            logger.error('Failed to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
         if lot['status'] != actual_status:
             logger.warning(
@@ -198,13 +209,13 @@ class ProcessingBasic(object):
                 asset = self.assets_client.get_asset(asset_id).data
                 logger.info('Successfully got asset {}'.format(asset_id))
             except ResourceNotFound as e:
-                logger.error('Falied to get asset {0}: {1}'.format(asset_id,
+                logger.error('Failed to get asset {0}: {1}'.format(asset_id,
                                                                    e.message))
                 return False
             except RequestFailed as e:
-                logger.error('Falied to get asset {0}. Status code: {1}'.format(asset_id, e.status_code))
+                logger.error('Failed to get asset {0}. Status code: {1}'.format(asset_id, e.status_code))
                 raise RequestFailed('Failed to get assets')
-            if asset.assetType not in ASSET_TO_LOT_TYPE:
+            if asset.assetType not in self.allowed_asset_types:
                 return False
             related_lot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
             if related_lot_check or asset.status != status:

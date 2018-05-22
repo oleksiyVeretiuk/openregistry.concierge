@@ -54,10 +54,6 @@ LOTS_WORKFLOW = {
     }
 }
 
-
-ASSET_TO_LOT_TYPE = {
-    'basic', 'compound', 'claimrights'
-}
 NEXT_STATUS_CHANGE = {
     'lot': LOTS_WORKFLOW,
     'asset': BASIC_ASSETS_WORKFLOW
