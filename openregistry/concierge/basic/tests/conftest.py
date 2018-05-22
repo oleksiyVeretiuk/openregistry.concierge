@@ -5,7 +5,7 @@ import pytest
 
 from StringIO import StringIO
 
-from openregistry.concierge.worker import BotWorker, logger as LOGGER
+from openregistry.concierge.basic.processing import ProcessingBasic, logger as LOGGER
 
 TEST_CONFIG = {
     "db": {
@@ -37,7 +37,6 @@ TEST_CONFIG = {
 
 @pytest.fixture(scope='function')
 def db(request):
-
     server = couchdb.Server("http://{host}:{port}".format(
         **TEST_CONFIG['db']
     ))
@@ -60,9 +59,7 @@ def db(request):
 def bot(mocker, db):
     mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
-    return BotWorker(TEST_CONFIG)
+    return ProcessingBasic(TEST_CONFIG)
 
 
 class LogInterceptor(object):

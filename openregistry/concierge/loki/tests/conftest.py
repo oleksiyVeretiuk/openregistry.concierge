@@ -5,7 +5,7 @@ import pytest
 
 from StringIO import StringIO
 
-from openregistry.concierge.worker import BotWorker, logger as LOGGER
+from openregistry.concierge.loki.processing import ProcessingLoki, logger as LOGGER
 
 TEST_CONFIG = {
     "db": {
@@ -60,9 +60,7 @@ def db(request):
 def bot(mocker, db):
     mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
-    return BotWorker(TEST_CONFIG)
+    return ProcessingLoki(TEST_CONFIG)
 
 
 class LogInterceptor(object):
