@@ -23,6 +23,20 @@ TEST_CONFIG = {
             "url": "http://192.168.50.9",
             "token": "concierge",
             "version": 0
+        },
+        "basic": {
+            'aliases': ["basic"],
+            'assets': {
+                "basic": ["basic"],
+                "compound": ["compound"],
+                "claimRights": ["claimRights"]
+            }
+        },
+        "loki": {
+            'aliases': ["loki"],
+            'assets': {
+                "bounce": ["bounce", "domain"]
+            }
         }
     },
     "assets": {
@@ -53,13 +67,16 @@ def db(request):
     db.save(db['_design/lots'])
 
     request.addfinalizer(delete)
+    return db
 
 
 @pytest.fixture(scope='function')
 def bot(mocker, db):
-    mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
-    mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    return ProcessingBasic(TEST_CONFIG)
+    lots_client = mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True).return_value
+    assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
+    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
+    errors_doc = db.get(TEST_CONFIG['errors_doc'])
+    return ProcessingBasic(TEST_CONFIG['lots']['basic'], clients, errors_doc)
 
 
 class LogInterceptor(object):

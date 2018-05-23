@@ -496,7 +496,7 @@
       },
       "title":"Земля для космодрому 11",
       "assetID":"UA-2017-08-29-000007",
-      "assetType":"bounce",
+      "assetType":"basic",
       "value":{
          "currency":"UAH",
          "amount":100,

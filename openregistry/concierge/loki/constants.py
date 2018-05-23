@@ -61,8 +61,3 @@ KEYS_FOR_LOKI_PATCH = {
     'items': 'items',
     'assetCustodian': 'lotCustodian',
 }
-
-
-ALLOWED_ASSET_TYPES = {
-    'bounce'
-}

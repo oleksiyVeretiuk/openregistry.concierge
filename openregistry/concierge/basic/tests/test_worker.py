@@ -21,13 +21,14 @@ ROOT = os.path.dirname(__file__) + '/data/'
 
 
 def test_processing_basic_init(db, logger, mocker):
-    mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
-    mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    ProcessingBasic(TEST_CONFIG)
-    log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == 'lots_client - ok'
-    assert log_strings[1] == 'assets_client - ok'
-    assert log_strings[2] == 'couchdb - ok'
+    lots_client = mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True).return_value
+    assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
+    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
+    errors_doc = db.get(TEST_CONFIG['errors_doc'])
+    processing = ProcessingBasic(TEST_CONFIG['lots']['basic'], clients, errors_doc)
+    assert set(processing.allowed_asset_types) == {'basic', 'compound', 'claimRights'}
+    assert set(processing.handled_lot_types) == {'basic'}
+
 
 
 def test_patch_lot(bot, logger, mocker):
@@ -680,17 +681,18 @@ def test_check_assets(bot, logger, mocker):
     basic_asset['data']['relatedLot'] = verification_lot['id']
     basic_asset['data']['assetType'] = 'basic'
 
-    bounce_asset = deepcopy(assets[9])
-    bounce_asset['data']['status'] = 'pending'
-    bounce_asset['data']['relatedLot'] = verification_lot['id']
+    wrong_asset = deepcopy(assets[9])
+    wrong_asset['data']['status'] = 'pending'
+    wrong_asset['data']['assetType'] = 'wrong'
+    wrong_asset['data']['relatedLot'] = verification_lot['id']
 
 
     mock_get_asset.side_effect = [
-        munchify(bounce_asset),
+        munchify(wrong_asset),
         munchify(basic_asset)
     ]
 
-    verification_lot['assets'] = [bounce_asset['data']['id']]
+    verification_lot['assets'] = [wrong_asset['data']['id']]
     result = bot.check_assets(verification_lot)
     assert result is False
 
@@ -699,11 +701,11 @@ def test_check_assets(bot, logger, mocker):
     assert result is True
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7. Status code: 502"
-    assert log_strings[1] == "Falied to get asset e519404fd0b94305b3b19ec60add05e7: Asset could not be found."
+    assert log_strings[0] == "Failed to get asset e519404fd0b94305b3b19ec60add05e7. Status code: 502"
+    assert log_strings[1] == "Failed to get asset e519404fd0b94305b3b19ec60add05e7: Asset could not be found."
     assert log_strings[2] == "Successfully got asset e519404fd0b94305b3b19ec60add05e7"
     assert log_strings[3] == "Successfully got asset 0a7eba27b22a454180d3a49b02a1842f"
-    assert log_strings[4] == "Successfully got asset {}".format(bounce_asset['data']['id'])
+    assert log_strings[4] == "Successfully got asset {}".format(wrong_asset['data']['id'])
     assert log_strings[5] == "Successfully got asset {}".format(basic_asset['data']['id'])
 
 
@@ -739,8 +741,8 @@ def test_check_lot(bot, logger, mocker):
     assert result is False
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Falied to get lot 9ee8f769438e403ebfb17b2240aedcf1. Status code: 502"
-    assert log_strings[1] == "Falied to get lot 9ee8f769438e403ebfb17b2240aedcf1: Lot could not be found."
+    assert log_strings[0] == "Failed to get lot 9ee8f769438e403ebfb17b2240aedcf1. Status code: 502"
+    assert log_strings[1] == "Failed to get lot 9ee8f769438e403ebfb17b2240aedcf1: Lot could not be found."
     assert log_strings[2] == "Successfully got lot 9ee8f769438e403ebfb17b2240aedcf1"
     assert log_strings[3] == "Successfully got lot 9ee8f769438e403ebfb17b2240aedcf1"
     assert log_strings[4] == "Lot 9ee8f769438e403ebfb17b2240aedcf1 can not be processed in current status ('pending')"

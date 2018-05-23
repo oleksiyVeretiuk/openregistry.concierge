@@ -23,6 +23,20 @@ TEST_CONFIG = {
             "url": "http://192.168.50.9",
             "token": "concierge",
             "version": 0
+        },
+        "basic": {
+            'aliases': ["basic"],
+            'assets': {
+                "basic": ["basic"],
+                "compound": ["compound"],
+                "claimRights": ["claimRights"]
+            }
+        },
+        "loki": {
+            'aliases': ["loki"],
+            'assets': {
+                "bounce": ["bounce", "domain"]
+            }
         }
     },
     "assets": {
@@ -60,8 +74,12 @@ def db(request):
 def bot(mocker, db):
     mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
+    processing_loki = mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
+    processing_loki = processing_loki.return_value
+    processing_loki.handled_lot_types = ['loki']
+    processing_basic = mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
+    processing_basic = processing_basic.return_value
+    processing_basic.handled_lot_types = ['basic']
     return BotWorker(TEST_CONFIG)
 
 

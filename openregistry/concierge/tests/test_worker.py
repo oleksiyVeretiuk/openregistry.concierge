@@ -14,8 +14,12 @@ ROOT = os.path.dirname(__file__) + '/data/'
 def test_concierge_init(db, logger, mocker):
     mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
-    mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
+    processing_loki = mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
+    processing_loki = processing_loki.return_value
+    processing_loki.handled_lot_types = ['loki']
+    processing_basic = mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
+    processing_basic = processing_basic.return_value
+    processing_basic.handled_lot_types = ['basic']
     BotWorker(TEST_CONFIG)
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[0] == 'lots_client - ok'
@@ -53,8 +57,9 @@ def test_run(bot, logger, mocker, almost_always_true):
     mock_get_lot = mocker.patch.object(bot, 'get_lot', autospec=True)
     mock_process_basic = mocker.MagicMock()
     mock_process_loki = mocker.MagicMock()
-    bot.process_basic = mock_process_basic
-    bot.process_loki = mock_process_loki
+    bot.lot_type_processing_configurator = {}
+    bot.lot_type_processing_configurator['basic'] = mock_process_basic
+    bot.lot_type_processing_configurator['loki'] = mock_process_loki
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
     for lot in lots:
@@ -107,9 +112,24 @@ def test_run(bot, logger, mocker, almost_always_true):
 
     bot.run()
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Starting worker"
+    assert log_strings[1] == "Starting worker"
 
     assert mock_get_lot.call_count is 5
     assert mock_process_basic.process_lots.call_count == 6
+    assert mock_process_loki.process_lots.call_count == 2
 
     assert mock_process_basic.process_lots.call_args_list[5][0][0] == error_lots[1]['data']
+
+    mocker.patch('openregistry.concierge.worker.IS_BOT_WORKING', almost_always_true(1))
+    not_recognized_lot = lots[0]
+    not_recognized_lot['data']['lotType'] = 'wrong'
+    mock_get_lot.return_value = (lot['data'] for lot in [not_recognized_lot])
+    bot.run()
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[2] == "Starting worker"
+    assert log_strings[3] == 'Such lotType %s is not supported by this concierge configuration' % not_recognized_lot['data']['lotType']
+
+    assert mock_get_lot.call_count is 6
+
+    assert mock_process_basic.process_lots.call_count == 6
+    assert mock_process_loki.process_lots.call_count == 2

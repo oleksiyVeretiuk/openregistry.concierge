@@ -42,14 +42,28 @@ class BotWorker(object):
         Args:
             config: dictionary with configuration data
         """
+        self.lot_type_processing_configurator = {}
         self.config = config
-        self.process_loki = ProcessingLoki(config)
-        self.process_basic = ProcessingBasic(config)
-        self.sleep = self.config['time_to_sleep']
-        for key, item in init_clients(config, logger).items():
+
+        created_clients = init_clients(config, logger)
+
+        for key, item in created_clients.items():
             setattr(self, key, item)
         self.errors_doc = self.db.get(self.config['errors_doc'])
+
+        if config['lots'].get('loki'):
+            process_loki = ProcessingLoki(config['lots']['loki'], created_clients, self.errors_doc)
+            self._register_aliases(process_loki)
+        if config['lots'].get('basic'):
+            process_basic = ProcessingBasic(config['lots']['basic'], created_clients, self.errors_doc)
+            self._register_aliases(process_basic)
+
+        self.sleep = self.config['time_to_sleep']
         self.patch_log_doc = self.db.get('patch_requests')
+
+    def _register_aliases(self, processing):
+        for lt in processing.handled_lot_types:
+            self.lot_type_processing_configurator[lt] = processing
 
     def run(self):
         """
@@ -72,21 +86,18 @@ class BotWorker(object):
         logger.info("Starting worker")
         while IS_BOT_WORKING:
             for lot in self.get_lot():
+                if lot['lotType'] not in self.lot_type_processing_configurator:
+                    logger.warning('Such lotType %s is not supported by this concierge configuration' % lot['lotType'])
+                    continue
                 broken_lot = self.errors_doc.get(lot['id'], None)
                 if broken_lot:
                     if broken_lot['rev'] == lot['rev']:
                         continue
                     else:
                         errors_doc = resolve_broken_lot(self.db, logger, self.errors_doc, lot)
-                        if lot['lotType'] == 'basic':
-                            self.process_basic.process_lots(errors_doc[lot['id']])
-                        elif lot['lotType'] == 'loki':
-                            self.process_loki.process_lots(errors_doc[lot['id']])
+                        self.lot_type_processing_configurator[lot['lotType']].process_lots(errors_doc[lot['id']])
                 else:
-                    if lot['lotType'] == 'basic':
-                        self.process_basic.process_lots(lot)
-                    elif lot['lotType'] == 'loki':
-                        self.process_loki.process_lots(lot)
+                    self.lot_type_processing_configurator[lot['lotType']].process_lots(lot)
             time.sleep(self.sleep)
 
     def get_lot(self):
