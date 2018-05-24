@@ -16,14 +16,14 @@ from openprocurement_client.exceptions import (
     PreconditionFailed,
 )
 
-from .utils import (
+from openregistry.concierge.utils import (
     resolve_broken_lot,
     continuous_changes_feed,
     init_clients
 )
 from openregistry.concierge.loki.processing import ProcessingLoki
 from openregistry.concierge.basic.processing import ProcessingBasic
-from .constants import (
+from openregistry.concierge.constants import (
     DEFAULTS,
 )
 
