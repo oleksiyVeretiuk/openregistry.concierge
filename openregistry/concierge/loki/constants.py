@@ -61,3 +61,21 @@ KEYS_FOR_LOKI_PATCH = {
     'items': 'items',
     'assetCustodian': 'lotCustodian',
 }
+
+KEYS_FOR_AUCTION_CREATE = {
+    'title': 'title',
+    'merchandisingObject': 'id',
+    'description': 'description',
+    'tenderAttempts': 'auctions/{}/tenderAttempts',
+    'procuringEntity': 'lotCustodian',
+    'items': 'items',
+    'auctionPeriod/startDate': 'auctions/{}/auctionPeriod/startDate',
+    'value': 'auctions/{}/value',
+    'minimalStep': 'auctions/{}/minimalStep',
+    'guarantee': 'auctions/{}/guarantee',
+    'registrationFee': 'auctions/{}/registrationFee',
+    'procurementMethodType': 'auctions/{}/procurementMethodType',
+    'documents': 'auctions/{}/documents',
+    'bankAccount': 'auctions/{}/bankAccount',
+    'auctionParameters': 'auctions/{}/auctionParameters',
+}
