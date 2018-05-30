@@ -14,7 +14,7 @@ requires = [
     'requests',
     'openprocurement_client',
     'dpath',
-    'pytz,'
+    'pytz',
     'isodate'
 ]
 
