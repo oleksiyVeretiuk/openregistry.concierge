@@ -6,6 +6,7 @@ import logging.config
 import os
 import time
 import yaml
+from copy import deepcopy
 from retrying import retry
 from datetime import datetime
 from dpath import util
@@ -120,11 +121,13 @@ class ProcessingLoki(object):
                     self.patch_lot(lot, get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'fail'))
         elif lot['status'] == 'active.salable':
             if self.check_assets(lot, 'active'):
-                is_all_auction_valid = any([a['status'] in HANDLED_AUCTION_STATUSES for a in lot['auctions']])
+                is_all_auction_valid = all([a['status'] in HANDLED_AUCTION_STATUSES for a in lot['auctions']])
                 if is_all_auction_valid and self.check_previous_auction(lot):
                     auction = self._create_auction(lot)
                     if auction:
-                        self.patch_lot(lot, 'active.auction')
+                        data = {'auctions': deepcopy(lot['auctions'])}
+                        data['auctions'][auction['data']['tenderAttempts'] - 1]['auctionID'] = auction['data']['auctionID']
+                        self.patch_lot(lot, 'active.auction', data)
         else:
             self._process_lot_and_assets(
                 lot,
@@ -169,7 +172,7 @@ class ProcessingLoki(object):
     def _create_auction(self, lot):
         auction_from_lot = self.get_next_auction(lot)
         if not auction_from_lot:
-            return False
+            return
         auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
         if auction_from_lot['tenderAttempts'] > 1:
             auction['tenderPeriod'] = {}
@@ -185,7 +188,7 @@ class ProcessingLoki(object):
         except EXCEPTIONS as e:
             message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
             logger.error("Failed to create auction from lot {} ({})".format(lot['id'], message))
-            return False
+            return
 
     def _add_assets_to_lot(self, lot):
         result, patched_assets = self.patch_assets(

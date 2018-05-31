@@ -599,8 +599,15 @@ def test_process_lots(bot, logger, mocker):
     # Test active.salable lot
     mock_create_auction = mocker.patch.object(bot, '_create_auction', autospec=True)
     mock_check_previous_auction = mocker.patch.object(bot, 'check_previous_auction', autospec=True)
+
     active_salable_lot = lots[7]['data']
     active_salable_lot['assets'] = [assets[9]]
+
+    created_auction = munchify({'data': deepcopy(active_salable_lot['auctions'][0])})
+    auction_id = 'id_of_auction'
+    created_auction.data.auctionID = auction_id
+    mock_create_auction.return_value = created_auction
+
     mock_check_lot.side_effect = iter([
         True
     ])
@@ -619,8 +626,11 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 13
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
+    patched_auctions = deepcopy(active_salable_lot['auctions'])
+    patched_auctions[created_auction.data.tenderAttempts - 1]['auctionID'] = created_auction.data.auctionID
+
     assert mock_patch_lot.call_count == 10
-    assert mock_patch_lot.call_args[0] == (active_salable_lot, 'active.auction')
+    assert mock_patch_lot.call_args[0] == (active_salable_lot, 'active.auction', {'auctions': patched_auctions})
 
     assert mock_create_auction.call_count == 1
     mock_create_auction.assert_called_with(active_salable_lot)
@@ -653,16 +663,15 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 14
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
-    assert mock_patch_lot.call_count == 11
-    assert mock_patch_lot.call_args[0] == (active_salable_lot, 'active.auction')
+    assert mock_patch_lot.call_count == 10
 
-    assert mock_create_auction.call_count == 2
+    assert mock_create_auction.call_count == 1
     mock_create_auction.assert_called_with(active_salable_lot)
 
     assert mock_check_assets.call_count == 8
     assert mock_check_assets.call_args[0] == (active_salable_lot, 'active')
 
-    assert mock_check_previous_auction.call_count == 2
+    assert mock_check_previous_auction.call_count == 1
     mock_check_previous_auction.assert_called_with(active_salable_lot)
 
 
@@ -956,7 +965,7 @@ def test_create_auction(bot, logger, mocker):
         ])
     result = bot._create_auction(active_salable_lot)
 
-    assert result is False
+    assert result is None
 
     assert mock_dict_from_object.call_count == 3
     mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
