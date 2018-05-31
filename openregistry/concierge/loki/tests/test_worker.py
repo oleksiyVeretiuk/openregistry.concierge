@@ -633,8 +633,6 @@ def test_process_lots(bot, logger, mocker):
 
     # Test active.salable lot when it contain not valid auctions
     active_salable_lot['auctions'][0]['status'] = 'cancelled'
-    mock_create_auction = mocker.patch.object(bot, '_create_auction', autospec=True)
-    mock_check_previous_auction = mocker.patch.object(bot, 'check_previous_auction', autospec=True)
     active_salable_lot = lots[7]['data']
     active_salable_lot['assets'] = [assets[9]]
     mock_check_lot.side_effect = iter([
@@ -658,13 +656,13 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_lot.call_count == 11
     assert mock_patch_lot.call_args[0] == (active_salable_lot, 'active.auction')
 
-    assert mock_create_auction.call_count == 1
+    assert mock_create_auction.call_count == 2
     mock_create_auction.assert_called_with(active_salable_lot)
 
     assert mock_check_assets.call_count == 8
     assert mock_check_assets.call_args[0] == (active_salable_lot, 'active')
 
-    assert mock_check_previous_auction.call_count == 1
+    assert mock_check_previous_auction.call_count == 2
     mock_check_previous_auction.assert_called_with(active_salable_lot)
 
 
