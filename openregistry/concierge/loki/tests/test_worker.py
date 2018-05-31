@@ -229,6 +229,9 @@ def test_process_lots(bot, logger, mocker):
     mock_get_asset = mocker.MagicMock()
     bot.assets_client.get_asset = mock_get_asset
 
+    mock_patch_subitem = mocker.MagicMock()
+    bot.lots_client.patch_resource_item_subitem = mock_patch_subitem
+
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
     # mock_check_lot.side_effect = iter([
     #     True,
@@ -320,9 +323,11 @@ def test_process_lots(bot, logger, mocker):
     ])
 
     to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+    asset_decision = deepcopy(assets[9]['data']['decisions'][0])
+    asset_decision['relatedItem'] = assets[9]['data']['id']
     to_compare['decisions'] = [
         verification_lot['decisions'][0],
-        assets[9]['data']['decisions'][0],
+        asset_decision
     ]
 
     bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
@@ -521,6 +526,8 @@ def test_process_lots(bot, logger, mocker):
     mock_get_asset.side_effect = iter([
         munchify(assets[9])
     ])
+    asset_decision = assets[9]['data']['decisions'][0]
+    asset_decision['relatedItem'] = assets[9]['data']['id']
     to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
     to_compare['decisions'] = [
         loki_verfication_lot['decisions'][0],
@@ -605,7 +612,9 @@ def test_process_lots(bot, logger, mocker):
 
     created_auction = munchify({'data': deepcopy(active_salable_lot['auctions'][0])})
     auction_id = 'id_of_auction'
+    internal_id = '1' * 32
     created_auction.data.auctionID = auction_id
+    created_auction.data.id = internal_id
     mock_create_auction.return_value = created_auction
 
     mock_check_lot.side_effect = iter([
@@ -626,11 +635,17 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 13
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
-    patched_auctions = deepcopy(active_salable_lot['auctions'])
-    patched_auctions[created_auction.data.tenderAttempts - 1]['auctionID'] = created_auction.data.auctionID
+    patched_data = {'auctionID': created_auction.data.id, 'status': 'active'}
 
-    assert mock_patch_lot.call_count == 10
-    assert mock_patch_lot.call_args[0] == (active_salable_lot, 'active.auction', {'auctions': patched_auctions})
+    assert mock_patch_lot.call_count == 9
+
+    assert mock_patch_subitem.call_count == 1
+    mock_patch_subitem.asset_called_with(
+        resource_item_id=active_salable_lot['id'],
+        patch_data={'data': patched_data},
+        subitem_name='auction',
+        subitem_id=created_auction.data.id
+    )
 
     assert mock_create_auction.call_count == 1
     mock_create_auction.assert_called_with(active_salable_lot)
@@ -663,7 +678,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 14
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
-    assert mock_patch_lot.call_count == 10
+    assert mock_patch_lot.call_count == 9
 
     assert mock_create_auction.call_count == 1
     mock_create_auction.assert_called_with(active_salable_lot)
@@ -698,6 +713,15 @@ def test_process_lots_broken(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
 
+    with open(ROOT + 'assets.json') as assets:
+        assets = load(assets)
+
+    mock_get_asset = mocker.MagicMock()
+    mock_get_asset.return_value = munchify(assets[7])
+
+    bot.assets_client.get_asset = mock_get_asset
+
+
     lot = lots[0]['data']
 
     # failed on patching assets to verification
@@ -717,6 +741,8 @@ def test_process_lots_broken(bot, logger, mocker):
     assert log_strings[1] == "Assets ['successfully_patched_assets'] will be repatched to 'pending'"
 
     # failed on patching assets to active
+    mock_deepcopy = mocker.patch('openregistry.concierge.loki.processing.deepcopy', autospec=True)
+
     bot.process_lots(lot)  # patch_assets: [True, False, False]
 
     assert mock_patch_assets.call_count == 5
