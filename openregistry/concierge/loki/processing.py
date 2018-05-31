@@ -125,9 +125,13 @@ class ProcessingLoki(object):
                 if is_all_auction_valid and self.check_previous_auction(lot):
                     auction = self._create_auction(lot)
                     if auction:
-                        data = {'auctions': deepcopy(lot['auctions'])}
-                        data['auctions'][auction['data']['tenderAttempts'] - 1]['auctionID'] = auction['data']['auctionID']
-                        self.patch_lot(lot, 'active.auction', data)
+                        data = {'auctionID': auction['data']['id'], 'status': 'active'}
+                        self.lots_client.patch_resource_item_subitem(
+                            resource_item_id=lot['id'],
+                            patch_data={'data': data},
+                            subitem_name='auctions',
+                            subitem_id=auction['data']['id']
+                        )
         else:
             self._process_lot_and_assets(
                 lot,
@@ -220,10 +224,12 @@ class ProcessingLoki(object):
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
                 asset = self.assets_client.get_asset(lot['assets'][0]).data
+                asset_decision = deepcopy(asset['decisions'][0])
+                asset_decision['relatedItem'] = asset['id']
                 to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
                 to_patch['decisions'] = [
                     lot['decisions'][0],
-                    asset['decisions'][0]
+                    asset_decision
                 ]
                 result = self.patch_lot(
                     lot,
