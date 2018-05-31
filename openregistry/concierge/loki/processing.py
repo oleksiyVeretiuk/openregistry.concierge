@@ -6,7 +6,12 @@ import logging.config
 import os
 import time
 import yaml
+from copy import deepcopy
 from retrying import retry
+from datetime import datetime
+from dpath import util
+from isodate import parse_duration
+from pytz import timezone
 
 from openprocurement_client.exceptions import (
     Forbidden,
@@ -24,14 +29,18 @@ from openregistry.concierge.utils import (
 )
 from openregistry.concierge.loki.constants import (
     KEYS_FOR_LOKI_PATCH,
-    NEXT_STATUS_CHANGE
+    NEXT_STATUS_CHANGE,
+    KEYS_FOR_AUCTION_CREATE
 )
+
+TZ = timezone(os.environ['TZ'] if 'TZ' in os.environ else 'Europe/Kiev')
 
 logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-HANDLED_STATUSES = ('verification', 'pending.dissolution', 'pending.sold', 'pending.deleted')
+HANDLED_STATUSES = ('verification', 'pending.dissolution', 'pending.sold', 'pending.deleted', 'active.salable')
+HANDLED_AUCTION_STATUSES = ('scheduled', 'unsuccessful')
 
 IS_BOT_WORKING = True
 
@@ -110,12 +119,76 @@ class ProcessingLoki(object):
                     self._add_assets_to_lot(lot)
                 else:
                     self.patch_lot(lot, get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'fail'))
+        elif lot['status'] == 'active.salable':
+            if self.check_assets(lot, 'active'):
+                is_all_auction_valid = all([a['status'] in HANDLED_AUCTION_STATUSES for a in lot['auctions']])
+                if is_all_auction_valid and self.check_previous_auction(lot):
+                    auction = self._create_auction(lot)
+                    if auction:
+                        data = {'auctions': deepcopy(lot['auctions'])}
+                        data['auctions'][auction['data']['tenderAttempts'] - 1]['auctionID'] = auction['data']['auctionID']
+                        self.patch_lot(lot, 'active.auction', data)
         else:
             self._process_lot_and_assets(
                 lot,
                 get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish')
             )
+
+    def get_next_auction(self, lot):
+        auctions = filter(lambda a: a['status'] == 'scheduled', lot['auctions'])
+        return auctions[0] if auctions else None
+
+    def _dict_from_object(self, keys, obj, auction_index):
+        to_patch = {}
+        for to_key, from_key in keys.items():
+            try:
+                value = util.get(obj, from_key.format(auction_index))
+            except KeyError:
+                continue
+            util.new(
+                to_patch,
+                to_key,
+                value
+            )
+        return to_patch
+
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
+    def _post_auction(self, data, lot_id):
+        auction = self.auction_client.create_auction(data)
+        logger.info("Successfully created auction {} from lot {})".format(auction['id'], lot_id))
+        return auction
+
+    def check_previous_auction(self, lot, status='unsuccessful'):
+        for index, auction in enumerate(lot['auctions']):
+            if auction['status'] == 'scheduled':
+                if index == 0:
+                    return True
+                previous = lot['auctions'][index - 1]
+                return previous['status'] == status
+        else:
+            return False
+
+    def _create_auction(self, lot):
+        auction_from_lot = self.get_next_auction(lot)
+        if not auction_from_lot:
+            return
+        auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
+        if auction_from_lot['tenderAttempts'] > 1:
+            auction['tenderPeriod'] = {}
+            auction['tenderPeriod']['startDate'] = datetime.now(TZ)
+            auction['tenderPeriod']['endDate'] = (
+                auction['tenderPeriod']['startDate'] +
+                parse_duration(auction_from_lot['tenderingDuration'])
+            )
+
+        try:
+            auction = self._post_auction(auction, lot['id'])
+            return auction
+        except EXCEPTIONS as e:
+            message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
+            logger.error("Failed to create auction from lot {} ({})".format(lot['id'], message))
+            return
 
     def _add_assets_to_lot(self, lot):
         result, patched_assets = self.patch_assets(

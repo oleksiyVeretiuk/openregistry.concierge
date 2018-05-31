@@ -14,6 +14,7 @@ ROOT = os.path.dirname(__file__) + '/data/'
 def test_concierge_init(db, logger, mocker):
     mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
+    mocker.patch('openregistry.concierge.utils.AuctionsClient', autospec=True)
     processing_loki = mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
     processing_loki = processing_loki.return_value
     processing_loki.handled_lot_types = ['loki']
@@ -22,9 +23,10 @@ def test_concierge_init(db, logger, mocker):
     processing_basic.handled_lot_types = ['basic']
     BotWorker(TEST_CONFIG)
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == 'lots_client - ok'
-    assert log_strings[1] == 'assets_client - ok'
-    assert log_strings[2] == 'couchdb - ok'
+    assert log_strings[0] == 'auction_client - ok'
+    assert log_strings[1] == 'lots_client - ok'
+    assert log_strings[2] == 'assets_client - ok'
+    assert log_strings[3] == 'couchdb - ok'
 
 
 def test_get_lot(bot, logger, mocker):

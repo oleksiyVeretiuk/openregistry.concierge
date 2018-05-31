@@ -12,7 +12,10 @@ requires = [
     'pyyaml',
     'couchdb',
     'requests',
-    'openprocurement_client'
+    'openprocurement_client',
+    'dpath',
+    'pytz',
+    'isodate'
 ]
 
 test_require = {

@@ -75,7 +75,8 @@ def db(request):
 def bot(mocker, db):
     lots_client = mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True).return_value
     assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
-    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
+    auction_client = mocker.patch('openregistry.concierge.utils.AuctionsClient', autospec=True).return_value
+    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db, 'auction_client': auction_client}
     errors_doc = db.get(TEST_CONFIG['errors_doc'])
     return ProcessingLoki(TEST_CONFIG['lots']['loki'], clients, errors_doc)
 

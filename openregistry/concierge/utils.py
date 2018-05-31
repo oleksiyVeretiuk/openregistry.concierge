@@ -4,6 +4,7 @@ from socket import error
 from logging import addLevelName, Logger
 
 from openprocurement_client.resources.lots import LotsClient
+from openprocurement_client.resources.auctions import AuctionsClient
 from openprocurement_client.resources.assets import AssetsClient
 from openprocurement_client.exceptions import (
     Forbidden,
@@ -101,7 +102,8 @@ def continuous_changes_feed(db, logger, limit=100, filter_doc='lots/status'):
                     'assets': row['doc']['assets'],
                     'lotID': row['doc']['lotID'],
                     'lotType': row['doc']['lotType'],
-                    'decisions': row['doc'].get('decisions')
+                    'decisions': row['doc'].get('decisions'),
+                    'auctions': row['doc'].get('auctions'),
                 }
                 yield item
         else:
@@ -136,7 +138,8 @@ def resolve_broken_lot(db, logger, doc, lot):
 def init_clients(config, logger):
     clients_from_config = {
         'lots_client': {'section': 'lots', 'client_instance': LotsClient},
-        'assets_client': {'section': 'assets', 'client_instance': AssetsClient}
+        'assets_client': {'section': 'assets', 'client_instance': AssetsClient},
+        'auction_client': {'section': 'assets', 'client_instance': AuctionsClient}
     }
     result = ''
     exceptions = []

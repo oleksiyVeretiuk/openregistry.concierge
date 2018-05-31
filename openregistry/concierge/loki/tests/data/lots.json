@@ -285,5 +285,134 @@
             "27516136f65b4fef8fa60746b28c7a14"
          ]
       }
+   },
+   {
+   "data":{
+      "status":"active.salable",
+      "lotID":"UA-2017-08-29-000006",
+      "description":"Lot with new client",
+      "title":"Lot with new client",
+      "lotType":"loki",
+      "id":"da430236591646f3a62eaf838e112f24",
+      "date":"2017-08-29T13:05:00.157430+03:00",
+      "lotCustodian":{
+         "contactPoint":{
+            "name":"Державне управління справами",
+            "telephone":"0440000000"
+         },
+         "identifier":{
+            "scheme":"UA-EDR",
+            "id":"00037256",
+            "uri":"http://www.dus.gov.ua/"
+         },
+         "name":"Державне управління справами",
+         "address":{
+            "postalCode":"01220",
+            "countryName":"Україна",
+            "streetAddress":"вул. Банкова, 11, корпус 1",
+            "region":"м. Київ",
+            "locality":"м. Київ"
+         }
+      },
+      "decisions": [
+         {
+            "decisionDate": "2017-08-29T13:05:00.157430+03:00",
+            "decisionID": "decisionID"
+         }
+      ],
+      "auctions": [
+         {
+          "status": "scheduled",
+          "tenderAttempts": 1,
+          "auctionPeriod": {
+              "startDate": "2017-08-29T13:05:00.157430+03:00",
+              "endDate": "2019-08-29T13:05:00.157430+03:00"
+            },
+          "value": {
+              "amount": 3000,
+              "currency": "UAH",
+              "valueAddedTaxIncluded": true
+          },
+          "minimalStep": {
+              "amount": 300,
+              "currency": "UAH",
+              "valueAddedTaxIncluded": true
+          },
+          "guarantee": {
+              "amount": 700,
+              "currency": "UAH"
+          },
+          "registrationFee": {
+              "amount": 700,
+              "currency": "UAH"
+          },
+          "procurementMethodType": "sellout.english"
+         },
+         {
+          "status": "scheduled",
+          "tenderAttempts": 2,
+          "auctionPeriod": {
+              "startDate": "2017-08-29T13:05:00.157430+03:00",
+              "endDate": "2019-08-29T13:05:00.157430+03:00"
+          },
+          "value": {
+              "amount": 1500,
+              "currency": "UAH",
+              "valueAddedTaxIncluded": true
+          },
+          "minimalStep": {
+              "amount": 150,
+              "currency": "UAH",
+              "valueAddedTaxIncluded": true
+          },
+          "guarantee": {
+              "amount": 350,
+              "currency": "UAH"
+          },
+          "registrationFee": {
+              "amount": 350,
+              "currency": "UAH"
+          },
+          "tenderingDuration": "P2YT3H",
+          "procurementMethodType": "sellout.english"
+         },
+         {
+          "status": "scheduled",
+          "tenderAttempts": 3,
+          "auctionPeriod": {
+              "startDate": "2017-08-29T13:05:00.157430+03:00",
+              "endDate": "2019-08-29T13:05:00.157430+03:00"
+          },
+          "value": {
+              "amount": 1500,
+              "currency": "UAH",
+              "valueAddedTaxIncluded": true
+          },
+          "minimalStep": {
+              "amount": 0,
+              "currency": "UAH",
+              "valueAddedTaxIncluded": true
+          },
+          "guarantee": {
+              "amount": 350,
+              "currency": "UAH"
+          },
+          "registrationFee": {
+              "amount": 350,
+              "currency": "UAH"
+          },
+          "procurementMethodType": "sellout.insider",
+          "tenderingDuration": "P2YT3H",
+          "auctionParameters": {
+            "dutchSteps": 99
+         }
+         }
+      ],
+      "owner":"broker",
+      "dateModified":"2017-08-29T13:05:00.158015+03:00",
+      "assets":[
+         "27516136f65b4fef8fa60746b28c7a14"
+      ]
    }
+}
 ]

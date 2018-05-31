@@ -37,6 +37,13 @@ DEFAULTS = {
             "version": 0.1
         }
     },
+    "auctions": {
+        "api": {
+            "url": "http://0.0.0.0:6543",
+            "token": "concierge",
+            "version": 0.1
+        }
+    },
     "formatters": {
         "simple": {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
