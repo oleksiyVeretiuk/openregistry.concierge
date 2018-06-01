@@ -126,12 +126,7 @@ class ProcessingLoki(object):
                     auction = self._create_auction(lot)
                     if auction:
                         data = {'auctionID': auction['data']['id'], 'status': 'active'}
-                        self.lots_client.patch_resource_item_subitem(
-                            resource_item_id=lot['id'],
-                            patch_data={'data': data},
-                            subitem_name='auctions',
-                            subitem_id=auction['data']['id']
-                        )
+                        self._patch_auction(data, lot['id'], auction['data']['id'])
         else:
             self._process_lot_and_assets(
                 lot,
@@ -161,6 +156,17 @@ class ProcessingLoki(object):
     def _post_auction(self, data, lot_id):
         auction = self.auction_client.create_auction(data)
         logger.info("Successfully created auction {} from lot {})".format(auction['id'], lot_id))
+        return auction
+
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
+    def _patch_auction(self, data, lot_id, auction_id):
+        auction = self.lots_client.patch_resource_item_subitem(
+            resource_item_id=lot_id,
+            patch_data={'data': data},
+            subitem_name='auctions',
+            subitem_id=auction_id
+        )
+        logger.info("Successfully patched auction {} from lot {})".format(auction_id, lot_id))
         return auction
 
     def check_previous_auction(self, lot, status='unsuccessful'):
