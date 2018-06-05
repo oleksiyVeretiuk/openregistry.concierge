@@ -612,8 +612,9 @@ def test_process_lots(bot, logger, mocker):
     auction_id = 'id_of_auction'
     internal_id = '1' * 32
     created_auction.data.auctionID = auction_id
+    lot_auction_id = '2' * 32
     created_auction.data.id = internal_id
-    mock_create_auction.return_value = created_auction
+    mock_create_auction.return_value = (created_auction, lot_auction_id)
 
     mock_check_lot.side_effect = iter([
         True
@@ -641,7 +642,7 @@ def test_process_lots(bot, logger, mocker):
     mock_patch_auction.assert_called_with(
         patched_data,
         active_salable_lot['id'],
-        created_auction.data.id
+        lot_auction_id
     )
 
     assert mock_create_auction.call_count == 1
@@ -939,7 +940,7 @@ def test_create_auction(bot, logger, mocker):
 
     result = bot._create_auction(active_salable_lot)
 
-    assert result == auction_obj
+    assert result == (auction_obj, auction['id'])
 
     assert mock_dict_from_object.call_count == 1
     mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
@@ -966,9 +967,10 @@ def test_create_auction(bot, logger, mocker):
     }
 
     mock_datetime.now.return_value = start_date
-    bot._create_auction(active_salable_lot)
 
-    assert result == auction_obj
+    result = bot._create_auction(active_salable_lot)
+
+    assert result == (auction_obj, auction['id'])
 
     assert mock_dict_from_object.call_count == 2
     mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
