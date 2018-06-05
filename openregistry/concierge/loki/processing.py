@@ -35,7 +35,7 @@ from openregistry.concierge.loki.constants import (
 
 TZ = timezone(os.environ['TZ'] if 'TZ' in os.environ else 'Europe/Kiev')
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('openregistry.concierge.worker')
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
