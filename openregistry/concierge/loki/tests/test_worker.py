@@ -32,7 +32,6 @@ def test_processing_loki_init(db, logger, mocker):
     assert set(processing.handled_lot_types) == {'loki'}
 
 
-
 def test_patch_lot(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
@@ -229,7 +228,9 @@ def test_process_lots(bot, logger, mocker):
     mock_get_asset = mocker.MagicMock()
     bot.assets_client.get_asset = mock_get_asset
 
+
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
+    mock_patch_auction = mocker.patch.object(bot, '_patch_auction', autospec=True)
     # mock_check_lot.side_effect = iter([
     #     True,
     #     True,
@@ -320,9 +321,11 @@ def test_process_lots(bot, logger, mocker):
     ])
 
     to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+    asset_decision = deepcopy(assets[9]['data']['decisions'][0])
+    asset_decision['relatedItem'] = assets[9]['data']['id']
     to_compare['decisions'] = [
         verification_lot['decisions'][0],
-        assets[9]['data']['decisions'][0],
+        asset_decision
     ]
 
     bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
@@ -521,6 +524,8 @@ def test_process_lots(bot, logger, mocker):
     mock_get_asset.side_effect = iter([
         munchify(assets[9])
     ])
+    asset_decision = assets[9]['data']['decisions'][0]
+    asset_decision['relatedItem'] = assets[9]['data']['id']
     to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
     to_compare['decisions'] = [
         loki_verfication_lot['decisions'][0],
@@ -605,8 +610,11 @@ def test_process_lots(bot, logger, mocker):
 
     created_auction = munchify({'data': deepcopy(active_salable_lot['auctions'][0])})
     auction_id = 'id_of_auction'
+    internal_id = '1' * 32
     created_auction.data.auctionID = auction_id
-    mock_create_auction.return_value = created_auction
+    lot_auction_id = '2' * 32
+    created_auction.data.id = internal_id
+    mock_create_auction.return_value = (created_auction, lot_auction_id)
 
     mock_check_lot.side_effect = iter([
         True
@@ -626,11 +634,16 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 13
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
-    patched_auctions = deepcopy(active_salable_lot['auctions'])
-    patched_auctions[created_auction.data.tenderAttempts - 1]['auctionID'] = created_auction.data.auctionID
+    patched_data = {'auctionID': created_auction.data.id, 'status': 'active'}
 
-    assert mock_patch_lot.call_count == 10
-    assert mock_patch_lot.call_args[0] == (active_salable_lot, 'active.auction', {'auctions': patched_auctions})
+    assert mock_patch_lot.call_count == 9
+
+    assert mock_patch_auction.call_count == 1
+    mock_patch_auction.assert_called_with(
+        patched_data,
+        active_salable_lot['id'],
+        lot_auction_id
+    )
 
     assert mock_create_auction.call_count == 1
     mock_create_auction.assert_called_with(active_salable_lot)
@@ -663,7 +676,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 14
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
-    assert mock_patch_lot.call_count == 10
+    assert mock_patch_lot.call_count == 9
 
     assert mock_create_auction.call_count == 1
     mock_create_auction.assert_called_with(active_salable_lot)
@@ -698,6 +711,15 @@ def test_process_lots_broken(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
 
+    with open(ROOT + 'assets.json') as assets:
+        assets = load(assets)
+
+    mock_get_asset = mocker.MagicMock()
+    mock_get_asset.return_value = munchify(assets[7])
+
+    bot.assets_client.get_asset = mock_get_asset
+
+
     lot = lots[0]['data']
 
     # failed on patching assets to verification
@@ -717,6 +739,8 @@ def test_process_lots_broken(bot, logger, mocker):
     assert log_strings[1] == "Assets ['successfully_patched_assets'] will be repatched to 'pending'"
 
     # failed on patching assets to active
+    mock_deepcopy = mocker.patch('openregistry.concierge.loki.processing.deepcopy', autospec=True)
+
     bot.process_lots(lot)  # patch_assets: [True, False, False]
 
     assert mock_patch_assets.call_count == 5
@@ -916,7 +940,7 @@ def test_create_auction(bot, logger, mocker):
 
     result = bot._create_auction(active_salable_lot)
 
-    assert result == auction_obj
+    assert result == (auction_obj, auction['id'])
 
     assert mock_dict_from_object.call_count == 1
     mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
@@ -943,9 +967,10 @@ def test_create_auction(bot, logger, mocker):
     }
 
     mock_datetime.now.return_value = start_date
-    bot._create_auction(active_salable_lot)
 
-    assert result == auction_obj
+    result = bot._create_auction(active_salable_lot)
+
+    assert result == (auction_obj, auction['id'])
 
     assert mock_dict_from_object.call_count == 2
     mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
@@ -1049,6 +1074,60 @@ def test_post_auction(bot, logger, mocker):
     assert mock_auction_client.create_auction.call_count == 6
     mock_auction_client.create_auction.assert_called_with(lot['auctions'][0])
 
+
+def test_patch_auction(bot, logger, mocker):
+    with open(ROOT + 'lots.json') as lots:
+        lots = load(lots)
+
+    lot = lots[7]['data']
+
+    mock_lots_client = bot.lots_client
+    auction = 'auction'
+
+    auction_id = '1' * 32
+    # Test when patch is success
+    patched_data = {'auctionID': auction_id, 'status': 'active'}
+    mock_lots_client.patch_resource_item_subitem.side_effect = iter([
+        auction
+    ])
+
+    result = bot._patch_auction(patched_data, lot['id'], auction_id)
+
+    assert result == auction
+
+    assert mock_lots_client.patch_resource_item_subitem.call_count == 1
+    mock_lots_client.patch_resource_item_subitem.assert_called_with(
+        resource_item_id=lot['id'],
+        patch_data={'data': patched_data},
+        subitem_name='auctions',
+        subitem_id=auction_id
+    )
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[0] == "Successfully patched auction {} from lot {})".format(auction_id, lot['id'])
+
+    # Test when post is failed
+    mock_lots_client.patch_resource_item_subitem.side_effect = iter([
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+    ])
+
+    try:
+        bot._patch_auction(patched_data, lot['id'], auction_id)
+    except RequestFailed as ex:
+        pass
+
+    assert isinstance(ex, RequestFailed) is True
+    assert mock_lots_client.patch_resource_item_subitem.call_count == 6
+    mock_lots_client.patch_resource_item_subitem.assert_called_with(
+        resource_item_id=lot['id'],
+        patch_data={'data': patched_data},
+        subitem_name='auctions',
+        subitem_id='1' * 32
+    )
 
 def test_check_previous_auction(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:

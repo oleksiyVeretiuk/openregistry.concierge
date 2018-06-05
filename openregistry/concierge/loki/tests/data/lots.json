@@ -322,6 +322,7 @@
       ],
       "auctions": [
          {
+          "id": "549f7ad0171b4724bd463a5b601a8d51",
           "status": "scheduled",
           "tenderAttempts": 1,
           "auctionPeriod": {
@@ -349,6 +350,7 @@
           "procurementMethodType": "sellout.english"
          },
          {
+          "id": "0a3c5497b72b47139271c6ac5b50129d",
           "status": "scheduled",
           "tenderAttempts": 2,
           "auctionPeriod": {
@@ -377,6 +379,7 @@
           "procurementMethodType": "sellout.english"
          },
          {
+          "id": "69502e5cd17c4006a06c3e5faf72fb0f",
           "status": "scheduled",
           "tenderAttempts": 3,
           "auctionPeriod": {

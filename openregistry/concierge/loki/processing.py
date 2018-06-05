@@ -123,11 +123,11 @@ class ProcessingLoki(object):
             if self.check_assets(lot, 'active'):
                 is_all_auction_valid = all([a['status'] in HANDLED_AUCTION_STATUSES for a in lot['auctions']])
                 if is_all_auction_valid and self.check_previous_auction(lot):
-                    auction = self._create_auction(lot)
-                    if auction:
-                        data = {'auctions': deepcopy(lot['auctions'])}
-                        data['auctions'][auction['data']['tenderAttempts'] - 1]['auctionID'] = auction['data']['auctionID']
-                        self.patch_lot(lot, 'active.auction', data)
+                    result = self._create_auction(lot)
+                    if result:
+                        auction, lot_auction_id = result
+                        data = {'auctionID': auction['data']['id'], 'status': 'active'}
+                        self._patch_auction(data, lot['id'], lot_auction_id)
         else:
             self._process_lot_and_assets(
                 lot,
@@ -159,6 +159,17 @@ class ProcessingLoki(object):
         logger.info("Successfully created auction {} from lot {})".format(auction['id'], lot_id))
         return auction
 
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
+    def _patch_auction(self, data, lot_id, auction_id):
+        auction = self.lots_client.patch_resource_item_subitem(
+            resource_item_id=lot_id,
+            patch_data={'data': data},
+            subitem_name='auctions',
+            subitem_id=auction_id
+        )
+        logger.info("Successfully patched auction {} from lot {})".format(auction_id, lot_id))
+        return auction
+
     def check_previous_auction(self, lot, status='unsuccessful'):
         for index, auction in enumerate(lot['auctions']):
             if auction['status'] == 'scheduled':
@@ -184,7 +195,7 @@ class ProcessingLoki(object):
 
         try:
             auction = self._post_auction(auction, lot['id'])
-            return auction
+            return auction, auction_from_lot['id']
         except EXCEPTIONS as e:
             message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
             logger.error("Failed to create auction from lot {} ({})".format(lot['id'], message))
@@ -220,10 +231,12 @@ class ProcessingLoki(object):
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
                 asset = self.assets_client.get_asset(lot['assets'][0]).data
+                asset_decision = deepcopy(asset['decisions'][0])
+                asset_decision['relatedItem'] = asset['id']
                 to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
                 to_patch['decisions'] = [
                     lot['decisions'][0],
-                    asset['decisions'][0]
+                    asset_decision
                 ]
                 result = self.patch_lot(
                     lot,
