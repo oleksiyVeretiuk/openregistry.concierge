@@ -23,7 +23,7 @@ from openregistry.concierge.basic.constants import (
     NEXT_STATUS_CHANGE
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('openregistry.concierge.worker')
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
