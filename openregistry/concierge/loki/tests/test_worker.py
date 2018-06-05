@@ -634,7 +634,11 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 13
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
-    patched_data = {'auctionID': created_auction.data.id, 'status': 'active'}
+    patched_data = {
+        'auctionID': created_auction.data.id,
+        'status': 'active',
+        'relatedProcessID': created_auction.data.auctionID
+    }
 
     assert mock_patch_lot.call_count == 9
 

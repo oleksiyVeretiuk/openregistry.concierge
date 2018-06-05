@@ -22,6 +22,7 @@ EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, P
 STATUS_FILTER = """function(doc, req) {
   if(
     doc.status == "verification" || 
+    doc.status == "active.salable" || 
     doc.status == "pending.dissolution" || 
     doc.status == "recomposed" || 
     doc.status == "pending.sold" || 

@@ -126,7 +126,11 @@ class ProcessingLoki(object):
                     result = self._create_auction(lot)
                     if result:
                         auction, lot_auction_id = result
-                        data = {'auctionID': auction['data']['id'], 'status': 'active'}
+                        data = {
+                            'auctionID': auction['data']['id'],
+                            'status': 'active',
+                            'relatedProcessID': auction['data']['auctionID']
+                        }
                         self._patch_auction(data, lot['id'], lot_auction_id)
         else:
             self._process_lot_and_assets(
