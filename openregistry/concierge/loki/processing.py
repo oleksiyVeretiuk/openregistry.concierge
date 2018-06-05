@@ -123,10 +123,11 @@ class ProcessingLoki(object):
             if self.check_assets(lot, 'active'):
                 is_all_auction_valid = all([a['status'] in HANDLED_AUCTION_STATUSES for a in lot['auctions']])
                 if is_all_auction_valid and self.check_previous_auction(lot):
-                    auction = self._create_auction(lot)
-                    if auction:
+                    result = self._create_auction(lot)
+                    if result:
+                        auction, lot_auction_id = result
                         data = {'auctionID': auction['data']['id'], 'status': 'active'}
-                        self._patch_auction(data, lot['id'], auction['data']['id'])
+                        self._patch_auction(data, lot['id'], lot_auction_id)
         else:
             self._process_lot_and_assets(
                 lot,
@@ -194,7 +195,7 @@ class ProcessingLoki(object):
 
         try:
             auction = self._post_auction(auction, lot['id'])
-            return auction
+            return auction, auction_from_lot['id']
         except EXCEPTIONS as e:
             message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
             logger.error("Failed to create auction from lot {} ({})".format(lot['id'], message))
