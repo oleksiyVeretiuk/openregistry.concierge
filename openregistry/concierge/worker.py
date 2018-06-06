@@ -31,8 +31,6 @@ logger = logging.getLogger(__name__)
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
-HANDLED_STATUSES = ('verification', 'recomposed', 'pending.dissolution', 'pending.sold', 'pending.deleted')
-
 IS_BOT_WORKING = True
 
 

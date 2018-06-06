@@ -953,7 +953,7 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction.assert_called_with(active_salable_lot)
 
     assert mock_post_auction.call_count == 1
-    mock_post_auction.assert_called_with(dict_with_value, active_salable_lot['id'])
+    mock_post_auction.assert_called_with({'data': dict_with_value}, active_salable_lot['id'])
 
     # Tender attempts more than 1
     mock_post_auction.side_effect = iter([auction_obj])
@@ -983,7 +983,7 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction.assert_called_with(active_salable_lot)
 
     assert mock_post_auction.call_count == 2
-    mock_post_auction.assert_called_with(data_with_tender_period, active_salable_lot['id'])
+    mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
 
     # When you get error
     auction = active_salable_lot['auctions'][0]
@@ -1003,7 +1003,7 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction.assert_called_with(active_salable_lot)
 
     assert mock_post_auction.call_count == 3
-    mock_post_auction.assert_called_with(data_with_tender_period, active_salable_lot['id'])
+    mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[0] == 'Failed to create auction from lot {} (Server error: 502)'.format(active_salable_lot['id'])

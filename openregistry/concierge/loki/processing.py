@@ -198,7 +198,7 @@ class ProcessingLoki(object):
             )
 
         try:
-            auction = self._post_auction(auction, lot['id'])
+            auction = self._post_auction({'data': auction}, lot['id'])
             return auction, auction_from_lot['id']
         except EXCEPTIONS as e:
             message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message

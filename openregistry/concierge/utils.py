@@ -96,16 +96,7 @@ def continuous_changes_feed(db, logger, limit=100, filter_doc='lots/status'):
         last_seq_id = data['last_seq']
         if len(data['results']) != 0:
             for row in data['results']:
-                item = {
-                    'id': row['doc']['_id'],
-                    'rev': row['doc']['_rev'],
-                    'status': row['doc']['status'],
-                    'assets': row['doc']['assets'],
-                    'lotID': row['doc']['lotID'],
-                    'lotType': row['doc']['lotType'],
-                    'decisions': row['doc'].get('decisions'),
-                    'auctions': row['doc'].get('auctions'),
-                }
+                item = row['doc']
                 yield item
         else:
             break
