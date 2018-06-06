@@ -97,6 +97,10 @@ def continuous_changes_feed(db, logger, limit=100, filter_doc='lots/status'):
         if len(data['results']) != 0:
             for row in data['results']:
                 item = row['doc']
+                item.update({
+                    'id': row['doc']['_id'],
+                    'rev': row['doc']['_rev'],
+                })
                 yield item
         else:
             break
