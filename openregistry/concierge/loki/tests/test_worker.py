@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from json import load
 
 import pytest
@@ -10,6 +10,7 @@ from munch import munchify
 
 from openregistry.concierge.loki.tests.conftest import TEST_CONFIG
 from openregistry.concierge.loki.processing import logger as LOGGER
+from openregistry.concierge.loki.utils import calculate_business_date
 from openregistry.concierge.loki.processing import ProcessingLoki
 from openprocurement_client.exceptions import (
     Forbidden,
@@ -635,9 +636,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_args[0] == (active_salable_lot,)
 
     patched_data = {
-        'auctionID': created_auction.data.id,
+        'auctionID': created_auction.data.auctionID,
         'status': 'active',
-        'relatedProcessID': created_auction.data.auctionID
+        'relatedProcessID': created_auction.data.id
     }
 
     assert mock_patch_lot.call_count == 9
@@ -896,7 +897,6 @@ def test_dict_from_object(bot, logger, mocker):
     assert auction_dict['merchandisingObject'] == lot['id']
     assert 'items' not in auction_dict
     assert auction_dict['procuringEntity'] == lot['lotCustodian']
-    assert auction_dict['auctionPeriod']['startDate'] == lot['auctions'][auction_index]['auctionPeriod']['startDate']
     assert auction_dict['value'] == lot['auctions'][auction_index]['value']
     assert auction_dict['minimalStep'] == lot['auctions'][auction_index]['minimalStep']
     assert auction_dict['guarantee'] == lot['auctions'][auction_index]['guarantee']
@@ -912,7 +912,6 @@ def test_dict_from_object(bot, logger, mocker):
     assert auction_dict['merchandisingObject'] == lot['id']
     assert 'items' not in auction_dict
     assert auction_dict['procuringEntity'] == lot['lotCustodian']
-    assert auction_dict['auctionPeriod']['startDate'] == lot['auctions'][auction_index]['auctionPeriod']['startDate']
     assert auction_dict['value'] == lot['auctions'][auction_index]['value']
     assert auction_dict['minimalStep'] == lot['auctions'][auction_index]['minimalStep']
     assert auction_dict['guarantee'] == lot['auctions'][auction_index]['guarantee']
@@ -926,9 +925,9 @@ def test_create_auction(bot, logger, mocker):
     mock_dict_from_object = mocker.patch.object(bot, '_dict_from_object', autospec=True)
     mock_get_next_auction = mocker.patch.object(bot, 'get_next_auction', autospec=True)
     mock_post_auction = mocker.patch.object(bot, '_post_auction', autospec=True)
+    mock_datetime = mocker.patch('openregistry.concierge.loki.processing.datetime', autospec=True)
 
     dict_with_value = {'value': 'value'}
-    mock_dict_from_object.return_value = dict_with_value
 
     auction_obj = 'auction'
 
@@ -938,9 +937,21 @@ def test_create_auction(bot, logger, mocker):
     active_salable_lot = lots[7]['data']
 
     # With first auction
+    mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
+
     mock_post_auction.side_effect = iter([auction_obj])
-    auction = active_salable_lot['auctions'][0]
+    auction = deepcopy(active_salable_lot['auctions'][0])
+    now_date = datetime.now()
     mock_get_next_auction.side_effect = iter([auction])
+
+    mock_datetime.now.side_effect = iter([now_date])
+    auction_date = now_date + timedelta(2)
+    mock_datetime.strptime.side_effect = iter([auction_date])
+
+    auction['auctionPeriod']['startDate'] = auction_date.isoformat()
+
+    date_with_auction_period = deepcopy(dict_with_value)
+    date_with_auction_period['auctionPeriod'] = {'startDate': auction_date.isoformat()}
 
     result = bot._create_auction(active_salable_lot)
 
@@ -953,48 +964,63 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction.assert_called_with(active_salable_lot)
 
     assert mock_post_auction.call_count == 1
-    mock_post_auction.assert_called_with({'data': dict_with_value}, active_salable_lot['id'])
+    mock_post_auction.assert_called_with({'data': date_with_auction_period}, active_salable_lot['id'])
+
+    # Test if auctionPeriod.startDate is less than datetime.now
+    mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
+
+    mock_post_auction.side_effect = iter([auction_obj])
+    auction = active_salable_lot['auctions'][0]
+    mock_get_next_auction.side_effect = iter([auction])
+
+    start_date = datetime.now() - timedelta(2)
+    old_period_lot = deepcopy(active_salable_lot)
+    old_period_lot['auctions'][0]['auctionPeriod']['startDate'] = start_date.isoformat()
+    now_date = datetime.now()
+
+    mock_datetime.now.side_effect = iter([now_date])
+    auction_date = now_date - timedelta(2)
+    mock_datetime.strptime.side_effect = iter([auction_date])
+
+    date_with_auction_period = deepcopy(dict_with_value)
+    date_with_auction_period['auctionPeriod'] = {
+        'startDate': calculate_business_date(now_date, timedelta(1), None, True).isoformat()
+    }
+
+    result = bot._create_auction(old_period_lot)
+
+    assert result == (auction_obj, auction['id'])
+
+    assert mock_dict_from_object.call_count == 2
+    mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, old_period_lot, auction['tenderAttempts'] - 1)
+
+    assert mock_get_next_auction.call_count == 2
+    mock_get_next_auction.assert_called_with(old_period_lot)
+
+    assert mock_post_auction.call_count == 2
+    mock_post_auction.assert_called_with({'data': date_with_auction_period}, old_period_lot['id'])
 
     # Tender attempts more than 1
+    mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
+
     mock_post_auction.side_effect = iter([auction_obj])
     data_with_tender_period = deepcopy(dict_with_value)
 
     auction = active_salable_lot['auctions'][1]
-    mock_datetime = mocker.patch('openregistry.concierge.loki.processing.datetime', autospec=True)
     mock_get_next_auction.side_effect = iter([auction])
 
     start_date = datetime.now()
     end_date = start_date + parse_duration(active_salable_lot['auctions'][1]['tenderingDuration'])
     data_with_tender_period['tenderPeriod'] = {
-        'startDate': start_date,
-        'endDate': end_date
+        'startDate': start_date.isoformat(),
+        'endDate': end_date.isoformat()
     }
 
-    mock_datetime.now.return_value = start_date
+    mock_datetime.now.side_effect = iter([start_date])
 
     result = bot._create_auction(active_salable_lot)
 
     assert result == (auction_obj, auction['id'])
-
-    assert mock_dict_from_object.call_count == 2
-    mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
-
-    assert mock_get_next_auction.call_count == 2
-    mock_get_next_auction.assert_called_with(active_salable_lot)
-
-    assert mock_post_auction.call_count == 2
-    mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
-
-    # When you get error
-    auction = active_salable_lot['auctions'][0]
-    mock_get_next_auction.side_effect = iter([auction])
-
-    mock_post_auction.side_effect = iter([
-        RequestFailed(response=munchify({"text": "Request failed.", "status_code": 502})),
-        ])
-    result = bot._create_auction(active_salable_lot)
-
-    assert result is None
 
     assert mock_dict_from_object.call_count == 3
     mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
@@ -1005,8 +1031,56 @@ def test_create_auction(bot, logger, mocker):
     assert mock_post_auction.call_count == 3
     mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
 
+    # When you get error
+    mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
+
+    mock_datetime.now.side_effect = iter([start_date])
+
+    auction = active_salable_lot['auctions'][1]
+    mock_get_next_auction.side_effect = iter([auction])
+
+    mock_post_auction.side_effect = iter([
+        RequestFailed(response=munchify({"text": "Request failed.", "status_code": 502})),
+        ])
+    result = bot._create_auction(active_salable_lot)
+
+    assert result is None
+
+    assert mock_dict_from_object.call_count == 4
+    mock_dict_from_object.assert_called_with(KEYS_FOR_AUCTION_CREATE, active_salable_lot, auction['tenderAttempts'] - 1)
+
+    assert mock_get_next_auction.call_count == 4
+    mock_get_next_auction.assert_called_with(active_salable_lot)
+
+    assert mock_post_auction.call_count == 4
+    mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
+
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[0] == 'Failed to create auction from lot {} (Server error: 502)'.format(active_salable_lot['id'])
+
+    # Create auction with wrong procurementMethodType
+    mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
+
+    mock_datetime.now.side_effect = iter([start_date])
+
+    auction = deepcopy(active_salable_lot['auctions'][0])
+    auction['procurementMethodType'] = 'wrong'
+    mock_get_next_auction.side_effect = iter([auction])
+
+    result = bot._create_auction(active_salable_lot)
+
+    assert result is None
+
+    assert mock_dict_from_object.call_count == 4
+
+    assert mock_get_next_auction.call_count == 5
+    mock_get_next_auction.assert_called_with(active_salable_lot)
+
+    assert mock_post_auction.call_count == 4
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[1] == "Such procurementMethodType is not allowed to create {}. " \
+                             "Allowed procurementMethodType {}".format(auction['procurementMethodType'], bot.allowed_pmt)
 
 
 def test_get_next_auction(bot, logger, mocker):

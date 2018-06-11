@@ -8,7 +8,7 @@ import time
 import yaml
 from copy import deepcopy
 from retrying import retry
-from datetime import datetime
+from datetime import datetime, timedelta
 from dpath import util
 from isodate import parse_duration
 from pytz import timezone
@@ -27,6 +27,7 @@ from openregistry.concierge.utils import (
     get_next_status,
     retry_on_error,
 )
+from openregistry.concierge.loki.utils import calculate_business_date
 from openregistry.concierge.loki.constants import (
     KEYS_FOR_LOKI_PATCH,
     NEXT_STATUS_CHANGE,
@@ -55,13 +56,18 @@ class ProcessingLoki(object):
         self.config = config
         self.allowed_asset_types = []
         self.handled_lot_types = []
+        self.allowed_pmt = []
 
+        self._register_allowed_procurement_method_types()
         self._register_allowed_assets()
         self._register_handled_lot_types()
 
         for key, item in clients.items():
             setattr(self, key, item)
         self.errors_doc = errors_doc
+
+    def _register_allowed_procurement_method_types(self):
+        self.allowed_pmt += self.config.get('planned_pmt', [])
 
     def _register_allowed_assets(self):
         for _, asset_aliases in self.config.get('assets', {}).items():
@@ -127,9 +133,9 @@ class ProcessingLoki(object):
                     if result:
                         auction, lot_auction_id = result
                         data = {
-                            'auctionID': auction['data']['id'],
+                            'auctionID': auction['data']['auctionID'],
                             'status': 'active',
-                            'relatedProcessID': auction['data']['auctionID']
+                            'relatedProcessID': auction['data']['id']
                         }
                         self._patch_auction(data, lot['id'], lot_auction_id)
         else:
@@ -188,15 +194,31 @@ class ProcessingLoki(object):
         auction_from_lot = self.get_next_auction(lot)
         if not auction_from_lot:
             return
-        auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
-        if auction_from_lot['tenderAttempts'] > 1:
-            auction['tenderPeriod'] = {}
-            auction['tenderPeriod']['startDate'] = datetime.now(TZ)
-            auction['tenderPeriod']['endDate'] = (
-                auction['tenderPeriod']['startDate'] +
-                parse_duration(auction_from_lot['tenderingDuration'])
+        if auction_from_lot['procurementMethodType'] not in self.allowed_pmt:
+            logger.warning(
+                "Such procurementMethodType is not allowed to create {}. "
+                "Allowed procurementMethodType {}".format(auction_from_lot['procurementMethodType'], self.allowed_pmt)
             )
-
+            return
+        auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
+        now_date = datetime.now(TZ)
+        if auction_from_lot['tenderAttempts'] == 1:
+            start_date = auction_from_lot['auctionPeriod']['startDate']
+            start_date = datetime.strptime(start_date, '%y-%m-%d')
+            auction['auctionPeriod'] = auction_from_lot['auctionPeriod']
+            if start_date.date() < now_date.date():
+                start_date = calculate_business_date(
+                    start=now_date,
+                    delta=timedelta(1),
+                    context=None,
+                    working_days=True
+                )
+                auction['auctionPeriod'] = {'startDate': start_date.isoformat()}
+        else:
+            auction['tenderPeriod'] = {
+                    'startDate': now_date.isoformat(),
+                    'endDate': (now_date + parse_duration(auction_from_lot['tenderingDuration'])).isoformat()
+                }
         try:
             auction = self._post_auction({'data': auction}, lot['id'])
             return auction, auction_from_lot['id']

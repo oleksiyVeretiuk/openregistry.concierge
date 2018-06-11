@@ -69,7 +69,6 @@ KEYS_FOR_AUCTION_CREATE = {
     'tenderAttempts': 'auctions/{}/tenderAttempts',
     'procuringEntity': 'lotCustodian',
     'items': 'items',
-    'auctionPeriod/startDate': 'auctions/{}/auctionPeriod/startDate',
     'value': 'auctions/{}/value',
     'minimalStep': 'auctions/{}/minimalStep',
     'guarantee': 'auctions/{}/guarantee',

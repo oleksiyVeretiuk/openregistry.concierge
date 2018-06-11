@@ -24,6 +24,7 @@ DEFAULTS = {
             }
         },
         "loki": {
+            "planned_pmt": [],
             'aliases': ["loki"],
             'assets': {
                 "bounce": ["bounce", "domain"]

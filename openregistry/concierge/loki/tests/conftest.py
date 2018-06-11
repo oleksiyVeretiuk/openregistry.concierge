@@ -33,6 +33,7 @@ TEST_CONFIG = {
             }
         },
         "loki": {
+            'planned_pmt': ['sellout.english', 'sellout.insider'],
             'aliases': ["loki"],
             'assets': {
                 "bounce": ["bounce", "domain"]

@@ -16,6 +16,7 @@ lots:
     token: "concierge"
     version:  0.1
   loki:
+    planned_pmt: []
     aliases: [loki]
     assets:
       bounce: [bounce, domain]

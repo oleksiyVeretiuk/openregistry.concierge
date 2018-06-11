@@ -326,8 +326,7 @@
           "status": "scheduled",
           "tenderAttempts": 1,
           "auctionPeriod": {
-              "startDate": "2017-08-29T13:05:00.157430+03:00",
-              "endDate": "2019-08-29T13:05:00.157430+03:00"
+              "startDate": "2017-08-29T13:05:00.157430+03:00"
             },
           "value": {
               "amount": 3000,
@@ -353,10 +352,6 @@
           "id": "0a3c5497b72b47139271c6ac5b50129d",
           "status": "scheduled",
           "tenderAttempts": 2,
-          "auctionPeriod": {
-              "startDate": "2017-08-29T13:05:00.157430+03:00",
-              "endDate": "2019-08-29T13:05:00.157430+03:00"
-          },
           "value": {
               "amount": 1500,
               "currency": "UAH",
@@ -382,10 +377,6 @@
           "id": "69502e5cd17c4006a06c3e5faf72fb0f",
           "status": "scheduled",
           "tenderAttempts": 3,
-          "auctionPeriod": {
-              "startDate": "2017-08-29T13:05:00.157430+03:00",
-              "endDate": "2019-08-29T13:05:00.157430+03:00"
-          },
           "value": {
               "amount": 1500,
               "currency": "UAH",
