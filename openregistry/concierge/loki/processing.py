@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
 import argparse
 import logging
 import logging.config
@@ -12,6 +11,7 @@ from datetime import datetime, timedelta
 from dpath import util
 from isodate import parse_duration
 from pytz import timezone
+from iso8601 import parse_date
 
 from openprocurement_client.exceptions import (
     Forbidden,
@@ -166,7 +166,7 @@ class ProcessingLoki(object):
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _post_auction(self, data, lot_id):
         auction = self.auction_client.create_auction(data)
-        logger.info("Successfully created auction {} from lot {})".format(auction['id'], lot_id))
+        logger.info("Successfully created auction {} from lot {})".format(auction['date']['id'], lot_id))
         return auction
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
@@ -203,8 +203,7 @@ class ProcessingLoki(object):
         auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
         now_date = datetime.now(TZ)
         if auction_from_lot['tenderAttempts'] == 1:
-            start_date = auction_from_lot['auctionPeriod']['startDate']
-            start_date = datetime.strptime(start_date, '%y-%m-%d')
+            start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])
             auction['auctionPeriod'] = auction_from_lot['auctionPeriod']
             if start_date.date() < now_date.date():
                 start_date = calculate_business_date(
