@@ -1118,7 +1118,7 @@ def test_post_auction(bot, logger, mocker):
     mock_auction_client = bot.auction_client
 
     # Test when post is success
-    auction = {'id': 'auctionID'}
+    auction = {'data': {'id': 'auctionID'}}
     mock_auction_client.create_auction.side_effect = iter([auction])
 
     result = bot._post_auction(lot['auctions'][0], lot['id'])
@@ -1129,7 +1129,7 @@ def test_post_auction(bot, logger, mocker):
     mock_auction_client.create_auction.assert_called_with(lot['auctions'][0])
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Successfully created auction {} from lot {})".format(auction['id'], lot['id'])
+    assert log_strings[0] == "Successfully created auction {} from lot {})".format(auction['data']['id'], lot['id'])
 
     # Test when post is failed
     auction = {'id': 'auctionID'}

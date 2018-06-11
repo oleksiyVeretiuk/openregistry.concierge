@@ -166,7 +166,7 @@ class ProcessingLoki(object):
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _post_auction(self, data, lot_id):
         auction = self.auction_client.create_auction(data)
-        logger.info("Successfully created auction {} from lot {})".format(auction['date']['id'], lot_id))
+        logger.info("Successfully created auction {} from lot {})".format(auction['data']['id'], lot_id))
         return auction
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
