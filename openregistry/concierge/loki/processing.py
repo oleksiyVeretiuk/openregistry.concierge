@@ -180,6 +180,12 @@ class ProcessingLoki(object):
         logger.info("Successfully patched auction {} from lot {})".format(auction_id, lot_id))
         return auction
 
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
+    def _extract_transfer_token(self, lot_id):
+        credentials = self.lots_client.extract_credentials(resource_item_id=lot_id)
+        logger.info("Successfully extracted tranfer_token from lot {})".format(lot_id))
+        return credentials['transfer_token']
+
     def check_previous_auction(self, lot, status='unsuccessful'):
         for index, auction in enumerate(lot['auctions']):
             if auction['status'] == 'scheduled':
@@ -201,6 +207,12 @@ class ProcessingLoki(object):
             )
             return
         auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
+        try:
+            auction['transfer_token'] = self._extract_transfer_token(lot['id'])
+        except EXCEPTIONS as e:
+            message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
+            logger.error("Failed to extract transfer token from lot {} ({})".format(lot['id'], message))
+            return
         now_date = datetime.now(TZ)
         if auction_from_lot['tenderAttempts'] == 1:
             start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])

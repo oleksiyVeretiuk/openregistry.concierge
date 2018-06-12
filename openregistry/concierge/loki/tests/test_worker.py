@@ -926,8 +926,11 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction = mocker.patch.object(bot, 'get_next_auction', autospec=True)
     mock_post_auction = mocker.patch.object(bot, '_post_auction', autospec=True)
     mock_datetime = mocker.patch('openregistry.concierge.loki.processing.datetime', autospec=True)
+    mock_extract_transfer_token = mocker.patch.object(bot, '_extract_transfer_token', autospec=True)
+    mock_extract_transfer_token.side_effect = lambda l: 'transfer_token'
 
-    dict_with_value = {'value': 'value'}
+
+    dict_with_value = {'value': 'value', 'transfer_token': 'transfer_token'}
 
     auction_obj = 'auction'
 
