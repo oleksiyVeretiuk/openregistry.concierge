@@ -64,6 +64,7 @@ KEYS_FOR_LOKI_PATCH = {
 
 KEYS_FOR_AUCTION_CREATE = {
     'title': 'title',
+    'mode': 'mode',
     'merchandisingObject': 'id',
     'description': 'description',
     'tenderAttempts': 'auctions/{}/tenderAttempts',
