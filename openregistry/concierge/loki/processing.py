@@ -184,7 +184,7 @@ class ProcessingLoki(object):
     def _extract_transfer_token(self, lot_id):
         credentials = self.lots_client.extract_credentials(resource_item_id=lot_id)
         logger.info("Successfully extracted tranfer_token from lot {})".format(lot_id))
-        return credentials['transfer_token']
+        return credentials['data']['transfer_token']
 
     def check_previous_auction(self, lot, status='unsuccessful'):
         for index, auction in enumerate(lot['auctions']):
