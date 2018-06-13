@@ -930,7 +930,7 @@ def test_create_auction(bot, logger, mocker):
     mock_extract_transfer_token.side_effect = lambda l: 'transfer_token'
 
 
-    dict_with_value = {'value': 'value', 'transfer_token': 'transfer_token'}
+    dict_with_value = {'value': 'value'}
 
     auction_obj = 'auction'
 
@@ -955,6 +955,8 @@ def test_create_auction(bot, logger, mocker):
 
     date_with_auction_period = deepcopy(dict_with_value)
     date_with_auction_period['auctionPeriod'] = {'startDate': auction_date.isoformat()}
+    date_with_auction_period['transfer_token'] = 'transfer_token'
+    date_with_auction_period['status'] = 'pending.activation'
 
     result = bot._create_auction(active_salable_lot)
 
@@ -965,6 +967,8 @@ def test_create_auction(bot, logger, mocker):
 
     assert mock_get_next_auction.call_count == 1
     mock_get_next_auction.assert_called_with(active_salable_lot)
+
+    assert mock_extract_transfer_token.call_count == 1
 
     assert mock_post_auction.call_count == 1
     mock_post_auction.assert_called_with({'data': date_with_auction_period}, active_salable_lot['id'])
@@ -989,6 +993,8 @@ def test_create_auction(bot, logger, mocker):
     date_with_auction_period['auctionPeriod'] = {
         'startDate': calculate_business_date(now_date, timedelta(1), None, True).isoformat()
     }
+    date_with_auction_period['transfer_token'] = 'transfer_token'
+    date_with_auction_period['status'] = 'pending.activation'
 
     result = bot._create_auction(old_period_lot)
 
@@ -1000,6 +1006,8 @@ def test_create_auction(bot, logger, mocker):
     assert mock_get_next_auction.call_count == 2
     mock_get_next_auction.assert_called_with(old_period_lot)
 
+    assert mock_extract_transfer_token.call_count == 2
+
     assert mock_post_auction.call_count == 2
     mock_post_auction.assert_called_with({'data': date_with_auction_period}, old_period_lot['id'])
 
@@ -1008,6 +1016,8 @@ def test_create_auction(bot, logger, mocker):
 
     mock_post_auction.side_effect = iter([auction_obj])
     data_with_tender_period = deepcopy(dict_with_value)
+    data_with_tender_period['transfer_token'] = 'transfer_token'
+    data_with_tender_period['status'] = 'pending.activation'
 
     auction = active_salable_lot['auctions'][1]
     mock_get_next_auction.side_effect = iter([auction])
@@ -1030,6 +1040,8 @@ def test_create_auction(bot, logger, mocker):
 
     assert mock_get_next_auction.call_count == 3
     mock_get_next_auction.assert_called_with(active_salable_lot)
+
+    assert mock_extract_transfer_token.call_count == 3
 
     assert mock_post_auction.call_count == 3
     mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
@@ -1055,6 +1067,8 @@ def test_create_auction(bot, logger, mocker):
     assert mock_get_next_auction.call_count == 4
     mock_get_next_auction.assert_called_with(active_salable_lot)
 
+    assert mock_extract_transfer_token.call_count == 4
+
     assert mock_post_auction.call_count == 4
     mock_post_auction.assert_called_with({'data': data_with_tender_period}, active_salable_lot['id'])
 
@@ -1079,11 +1093,39 @@ def test_create_auction(bot, logger, mocker):
     assert mock_get_next_auction.call_count == 5
     mock_get_next_auction.assert_called_with(active_salable_lot)
 
+    assert mock_extract_transfer_token.call_count == 4
     assert mock_post_auction.call_count == 4
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[1] == "Such procurementMethodType is not allowed to create {}. " \
                              "Allowed procurementMethodType {}".format(auction['procurementMethodType'], bot.allowed_pmt)
+
+    # When can`t extract credentials
+    mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
+    mock_extract_transfer_token.side_effect = iter([
+        RequestFailed(response=munchify({"text": "Request failed.", "status_code": 502})),
+    ])
+
+    mock_datetime.now.side_effect = iter([start_date])
+
+    auction = deepcopy(active_salable_lot['auctions'][0])
+    mock_get_next_auction.side_effect = iter([auction])
+
+    result = bot._create_auction(active_salable_lot)
+
+    assert result is None
+
+    assert mock_dict_from_object.call_count == 5
+
+    assert mock_get_next_auction.call_count == 6
+    mock_get_next_auction.assert_called_with(active_salable_lot)
+
+    assert mock_extract_transfer_token.call_count == 5
+    assert mock_post_auction.call_count == 4
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[2] == "Failed to extract transfer token from " \
+                             "lot {} (Server error: 502)".format(active_salable_lot['id'])
 
 
 def test_get_next_auction(bot, logger, mocker):

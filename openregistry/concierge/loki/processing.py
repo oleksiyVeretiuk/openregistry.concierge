@@ -207,6 +207,7 @@ class ProcessingLoki(object):
             )
             return
         auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
+        auction['status'] = 'pending.activation'
         try:
             auction['transfer_token'] = self._extract_transfer_token(lot['id'])
         except EXCEPTIONS as e:
