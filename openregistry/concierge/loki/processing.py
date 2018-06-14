@@ -2,7 +2,6 @@
 import argparse
 import logging
 import logging.config
-import os
 import time
 import yaml
 from copy import deepcopy
@@ -10,7 +9,6 @@ from retrying import retry
 from datetime import datetime, timedelta
 from dpath import util
 from isodate import parse_duration
-from pytz import timezone
 from iso8601 import parse_date
 
 from openprocurement_client.exceptions import (
@@ -27,6 +25,7 @@ from openregistry.concierge.utils import (
     get_next_status,
     retry_on_error,
 )
+from openregistry.concierge.constants import TZ
 from openregistry.concierge.loki.utils import calculate_business_date
 from openregistry.concierge.loki.constants import (
     KEYS_FOR_LOKI_PATCH,
@@ -34,7 +33,6 @@ from openregistry.concierge.loki.constants import (
     KEYS_FOR_AUCTION_CREATE
 )
 
-TZ = timezone(os.environ['TZ'] if 'TZ' in os.environ else 'Europe/Kiev')
 
 logger = logging.getLogger('openregistry.concierge.worker')
 
@@ -216,16 +214,20 @@ class ProcessingLoki(object):
             return
         now_date = datetime.now(TZ)
         if auction_from_lot['tenderAttempts'] == 1:
-            start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])
             auction['auctionPeriod'] = auction_from_lot['auctionPeriod']
-            if start_date.date() < now_date.date():
-                start_date = calculate_business_date(
-                    start=now_date,
-                    delta=timedelta(1),
-                    context=None,
-                    working_days=True
-                )
-                auction['auctionPeriod'] = {'startDate': start_date.isoformat()}
+            start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])
+            min_pause_before_start = timedelta(days=1)
+            if lot.get('mode'):
+                min_pause_before_start = timedelta(minutes=20)
+            calc_date = calculate_business_date(
+                start=now_date,
+                delta=min_pause_before_start,
+                context=None,
+                working_days=True
+            )
+            if start_date <= calc_date:
+                auction['auctionPeriod']['startDate'] = calc_date.isoformat()
+
         else:
             auction['tenderPeriod'] = {
                     'startDate': now_date.isoformat(),

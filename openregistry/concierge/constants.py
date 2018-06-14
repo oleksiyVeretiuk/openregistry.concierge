@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+import os
+from pytz import timezone
+
 DEFAULTS = {
     "db": {
         "host": "127.0.0.1",
@@ -70,3 +74,6 @@ DEFAULTS = {
         }
     }
 }
+
+
+TZ = timezone(os.environ['TZ'] if 'TZ' in os.environ else 'Europe/Kiev')

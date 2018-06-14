@@ -8,6 +8,7 @@ import pytest
 from isodate import parse_duration
 from munch import munchify
 
+from openregistry.concierge.constants import TZ
 from openregistry.concierge.loki.tests.conftest import TEST_CONFIG
 from openregistry.concierge.loki.processing import logger as LOGGER
 from openregistry.concierge.loki.utils import calculate_business_date
@@ -956,7 +957,7 @@ def test_create_auction(bot, logger, mocker):
 
     mock_post_auction.side_effect = iter([auction_obj])
     auction = deepcopy(active_salable_lot['auctions'][0])
-    now_date = datetime.now()
+    now_date = datetime.now(TZ)
     mock_get_next_auction.side_effect = iter([auction])
 
     mock_datetime.now.side_effect = iter([now_date])
@@ -992,10 +993,10 @@ def test_create_auction(bot, logger, mocker):
     auction = active_salable_lot['auctions'][0]
     mock_get_next_auction.side_effect = iter([auction])
 
-    start_date = datetime.now() - timedelta(2)
+    start_date = datetime.now(TZ) - timedelta(2)
     old_period_lot = deepcopy(active_salable_lot)
     old_period_lot['auctions'][0]['auctionPeriod']['startDate'] = start_date.isoformat()
-    now_date = datetime.now()
+    now_date = datetime.now(TZ)
 
     mock_datetime.now.side_effect = iter([now_date])
     auction_date = now_date - timedelta(2)
@@ -1034,7 +1035,7 @@ def test_create_auction(bot, logger, mocker):
     auction = active_salable_lot['auctions'][1]
     mock_get_next_auction.side_effect = iter([auction])
 
-    start_date = datetime.now()
+    start_date = datetime.now(TZ)
     end_date = start_date + parse_duration(active_salable_lot['auctions'][1]['tenderingDuration'])
     data_with_tender_period['tenderPeriod'] = {
         'startDate': start_date.isoformat(),
