@@ -205,6 +205,11 @@ class ProcessingLoki(object):
             )
             return
         auction = self._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_from_lot['tenderAttempts'] - 1)
+        lot_documents = deepcopy(lot.get('documents', []))
+        for d in lot_documents:
+            if d['documentOf'] == 'lot':
+                d['relatedItem'] = lot['id']
+        auction.setdefault('documents', []).extend(lot_documents)
         auction['status'] = 'pending.activation'
         try:
             auction['transfer_token'] = self._extract_transfer_token(lot['id'])
