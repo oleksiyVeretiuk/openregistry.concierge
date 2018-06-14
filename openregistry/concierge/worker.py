@@ -5,7 +5,6 @@ import logging.config
 import os
 import time
 import yaml
-from retrying import retry
 
 from openprocurement_client.exceptions import (
     Forbidden,

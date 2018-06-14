@@ -102,3 +102,6 @@ ENV/
 
 # Buildout
 bin/
+.mr.developer.cfg
+/src
+/cover

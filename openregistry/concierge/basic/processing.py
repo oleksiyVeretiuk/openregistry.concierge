@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# -*- coding: utf-8 -*-
-import argparse
 import logging
 import logging.config
 from retrying import retry
@@ -127,7 +125,9 @@ class ProcessingBasic(object):
                         self.db,
                         logger,
                         self.errors_doc, lot,
-                        'patching assets to {}'.format(get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre')))
+                        'patching assets to {}'.format(
+                            get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre')
+                        ))
         else:
             result, _ = self.patch_assets(
                 lot,
@@ -257,7 +257,6 @@ class ProcessingBasic(object):
             else:
                 patched_assets.append(asset_id)
         return is_all_patched, patched_assets
-
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _patch_single_asset(self, asset_id, patch_data):
