@@ -354,6 +354,8 @@ class ProcessingLoki(object):
                 raise RequestFailed('Failed to get assets')
             if asset.assetType not in self.allowed_asset_types:
                 return False
+            if asset.get('mode') != lot.get('mode'):
+                return False
             related_lot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
             if related_lot_check or asset.status != status:
                 return False

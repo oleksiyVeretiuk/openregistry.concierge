@@ -847,6 +847,18 @@ def test_check_assets(bot, logger, mocker):
     assert log_strings[5] == "Successfully got asset {}".format(bounce_asset['data']['id'])
 
 
+    # If asset.mode and and lot.mode not equal
+    asset_with_mode = deepcopy(bounce_asset)
+    asset_with_mode['data']['mode'] = 'test'
+    loki_verification_lot['assets'] = [asset_with_mode['data']['id']]
+    mock_get_asset.side_effect = [
+        munchify(asset_with_mode)
+    ]
+
+    result = bot.check_assets(loki_verification_lot)
+    assert result is False
+
+
 def test_check_lot(bot, logger, mocker):
 
     with open(ROOT + 'lots.json') as lots:
