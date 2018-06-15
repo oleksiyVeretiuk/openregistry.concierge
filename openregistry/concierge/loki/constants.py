@@ -78,4 +78,5 @@ KEYS_FOR_AUCTION_CREATE = {
     'documents': 'auctions/{}/documents',
     'bankAccount': 'auctions/{}/bankAccount',
     'auctionParameters': 'auctions/{}/auctionParameters',
+    'procurementMethodDetails': 'auctions/{}/procurementMethodDetails',
 }
