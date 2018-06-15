@@ -1035,14 +1035,12 @@ def test_create_auction(bot, logger, mocker):
     auction = active_salable_lot['auctions'][1]
     mock_get_next_auction.side_effect = iter([auction])
 
-    start_date = datetime.now(TZ)
-    end_date = start_date + parse_duration(active_salable_lot['auctions'][1]['tenderingDuration'])
-    data_with_tender_period['tenderPeriod'] = {
+    start_date = now_date + parse_duration(active_salable_lot['auctions'][1]['tenderingDuration'])
+    data_with_tender_period['auctionPeriod'] = {
         'startDate': start_date.isoformat(),
-        'endDate': end_date.isoformat()
     }
 
-    mock_datetime.now.side_effect = iter([start_date])
+    mock_datetime.now.side_effect = iter([now_date])
 
     result = bot._create_auction(active_salable_lot)
 
@@ -1062,7 +1060,7 @@ def test_create_auction(bot, logger, mocker):
     # When you get error
     mock_dict_from_object.side_effect = iter([deepcopy(dict_with_value)])
 
-    mock_datetime.now.side_effect = iter([start_date])
+    mock_datetime.now.side_effect = iter([now_date])
 
     auction = active_salable_lot['auctions'][1]
     mock_get_next_auction.side_effect = iter([auction])

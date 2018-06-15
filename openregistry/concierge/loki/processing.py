@@ -234,9 +234,8 @@ class ProcessingLoki(object):
                 auction['auctionPeriod']['startDate'] = calc_date.isoformat()
 
         else:
-            auction['tenderPeriod'] = {
-                    'startDate': now_date.isoformat(),
-                    'endDate': (now_date + parse_duration(auction_from_lot['tenderingDuration'])).isoformat()
+            auction['auctionPeriod'] = {
+                    'startDate': (now_date + parse_duration(auction_from_lot['tenderingDuration'])).isoformat()
                 }
         try:
             auction = self._post_auction({'data': auction}, lot['id'])
