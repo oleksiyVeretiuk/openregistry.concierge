@@ -961,8 +961,7 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction.side_effect = iter([auction])
 
     mock_datetime.now.side_effect = iter([now_date])
-    auction_date = now_date + timedelta(2)
-    mock_datetime.strptime.side_effect = iter([auction_date])
+    auction_date = calculate_business_date(now_date, timedelta(3), None, True)
 
     auction['auctionPeriod']['startDate'] = auction_date.isoformat()
 
@@ -1000,8 +999,6 @@ def test_create_auction(bot, logger, mocker):
     now_date = datetime.now(TZ)
 
     mock_datetime.now.side_effect = iter([now_date])
-    auction_date = now_date - timedelta(2)
-    mock_datetime.strptime.side_effect = iter([auction_date])
 
     data_with_auction_period = deepcopy(dict_with_value)
     data_with_auction_period['auctionPeriod'] = {
@@ -1175,8 +1172,7 @@ def test_create_auction(bot, logger, mocker):
     mock_get_next_auction.side_effect = iter([auction])
 
     mock_datetime.now.side_effect = iter([now_date])
-    auction_date = now_date + timedelta(2)
-    mock_datetime.strptime.side_effect = iter([auction_date])
+    auction_date = calculate_business_date(now_date, timedelta(3), None, True)
 
     auction['auctionPeriod']['startDate'] = auction_date.isoformat()
 
