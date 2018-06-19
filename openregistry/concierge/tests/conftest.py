@@ -17,7 +17,7 @@ TEST_CONFIG = {
         "filter": "lots/status"
     },
     "errors_doc": "broken_lots",
-    "time_to_sleep": 2,
+    "time_to_sleep": 0.0002,
     "lots": {
         "api": {
             "url": "http://192.168.50.9",

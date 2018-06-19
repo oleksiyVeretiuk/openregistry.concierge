@@ -17,7 +17,7 @@ TEST_CONFIG = {
         "filter": "lots/status"
     },
     "errors_doc": "broken_lots",
-    "time_to_sleep": 2,
+    "time_to_sleep": 0.0002,
     "lots": {
         "api": {
             "url": "http://192.168.50.9",
@@ -79,7 +79,23 @@ def bot(mocker, db):
     auction_client = mocker.patch('openregistry.concierge.utils.AuctionsClient', autospec=True).return_value
     clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db, 'auction_client': auction_client}
     errors_doc = db.get(TEST_CONFIG['errors_doc'])
-    return ProcessingLoki(TEST_CONFIG['lots']['loki'], clients, errors_doc)
+
+    from retrying import retry as base_retry
+
+    def rude_mock(*args, **kwargs):
+        kwargs['wait_fixed'] = 2
+        return base_retry(**kwargs)
+
+    mocker.patch('retrying.retry', rude_mock)
+    from openregistry.concierge.loki import processing
+    reload(processing)
+
+    processing_loki = processing.ProcessingLoki(TEST_CONFIG['lots']['loki'], clients, errors_doc)
+
+    mocker.patch('retrying.retry', base_retry)
+    reload(processing)
+
+    return processing_loki
 
 
 class LogInterceptor(object):

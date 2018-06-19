@@ -76,7 +76,23 @@ def bot(mocker, db):
     assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
     clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
     errors_doc = db.get(TEST_CONFIG['errors_doc'])
-    return ProcessingBasic(TEST_CONFIG['lots']['basic'], clients, errors_doc)
+
+    from retrying import retry as base_retry
+
+    def rude_mock(*args, **kwargs):
+        kwargs['wait_fixed'] = 2
+        return base_retry(**kwargs)
+
+    mocker.patch('retrying.retry', rude_mock)
+    from openregistry.concierge.basic import processing
+    reload(processing)
+
+    processing_basic = processing.ProcessingBasic(TEST_CONFIG['lots']['basic'], clients, errors_doc)
+
+    mocker.patch('retrying.retry', base_retry)
+    reload(processing)
+
+    return processing_basic
 
 
 class LogInterceptor(object):
