@@ -221,15 +221,20 @@ class ProcessingLoki(object):
         if auction_from_lot['tenderAttempts'] == 1:
             auction['auctionPeriod'] = auction_from_lot['auctionPeriod']
             start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])
-            min_pause_before_start = timedelta(days=1)
-            if lot.get('mode'):
-                min_pause_before_start = timedelta(minutes=20)
-            calc_date = calculate_business_date(
-                start=now_date,
-                delta=min_pause_before_start,
-                context=None,
-                working_days=True
-            )
+            if lot.get('mode', '') == 'test':
+                calc_date = calculate_business_date(
+                    start=now_date,
+                    delta=timedelta(minutes=20),
+                    context=None,
+                    working_days=False
+                )
+            else:
+                calc_date = calculate_business_date(
+                    start=now_date,
+                    delta=timedelta(days=1),
+                    context=None,
+                    working_days=True
+                )
             if start_date <= calc_date:
                 auction['auctionPeriod']['startDate'] = calc_date.isoformat()
 
