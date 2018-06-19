@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import argparse
+import signal
 import logging
 import logging.config
 import os
@@ -33,6 +34,17 @@ EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, P
 IS_BOT_WORKING = True
 
 
+class GracefulKiller(object):
+    kill_now = False
+
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self,signum, frame):
+        self.kill_now = True
+
+
 class BotWorker(object):
     def __init__(self, config):
         """
@@ -41,6 +53,7 @@ class BotWorker(object):
         """
         self.lot_type_processing_configurator = {}
         self.config = config
+        self.killer = GracefulKiller()
 
         created_clients = init_clients(config, logger)
 
@@ -95,6 +108,12 @@ class BotWorker(object):
                         self.lot_type_processing_configurator[lot['lotType']].process_lots(errors_doc[lot['id']])
                 else:
                     self.lot_type_processing_configurator[lot['lotType']].process_lots(lot)
+
+                if self.killer.kill_now:
+                    break
+
+            if self.killer.kill_now:
+                break
             time.sleep(self.sleep)
 
     def get_lot(self):
