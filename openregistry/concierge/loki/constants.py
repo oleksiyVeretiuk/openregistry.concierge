@@ -79,4 +79,7 @@ KEYS_FOR_AUCTION_CREATE = {
     'bankAccount': 'auctions/{}/bankAccount',
     'auctionParameters': 'auctions/{}/auctionParameters',
     'procurementMethodDetails': 'auctions/{}/procurementMethodDetails',
+    'submissionMethodDetails': 'auctions/{}/submissionMethodDetails',
+    'submissionMethodDetails_en': 'auctions/{}/submissionMethodDetails_en',
+    'submissionMethodDetails_ru': 'auctions/{}/submissionMethodDetails_ru'
 }
