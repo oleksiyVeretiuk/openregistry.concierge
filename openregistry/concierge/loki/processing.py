@@ -221,7 +221,7 @@ class ProcessingLoki(object):
         if auction_from_lot['tenderAttempts'] == 1:
             auction['auctionPeriod'] = auction_from_lot['auctionPeriod']
             start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])
-            if lot.get('mode', '') == 'test':
+            if all([p in auction.get('procurementMethodDetails', '') for p in("accelerator=1440", "quick")]):
                 calc_date = calculate_business_date(
                     start=now_date,
                     delta=timedelta(minutes=20),
