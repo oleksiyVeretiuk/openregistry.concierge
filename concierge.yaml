@@ -20,8 +20,9 @@ lots:
     aliases: [loki]
     assets:
       bounce: [bounce, domain]
-    basic:
-      aliases: [basic]
+  basic:
+    aliases: [basic]
+    assets:
       basic: [basic]
       compound: [compound]
       claimRights: [claimRights]

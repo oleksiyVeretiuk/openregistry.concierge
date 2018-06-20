@@ -20,13 +20,7 @@ from .design import sync_design
 CONTINUOUS_CHANGES_FEED_FLAG = True
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 STATUS_FILTER = """function(doc, req) {
-  if(
-    doc.status == "verification" || 
-    doc.status == "active.salable" || 
-    doc.status == "pending.dissolution" || 
-    doc.status == "recomposed" || 
-    doc.status == "pending.sold" || 
-    doc.status == "pending.deleted") {
+  if(%s) {
         return true;
     }
     return false;
@@ -48,7 +42,7 @@ class ConfigError(Exception):
     pass
 
 
-def prepare_couchdb(couch_url, db_name, logger, errors_doc):
+def prepare_couchdb(couch_url, db_name, logger, errors_doc, couchdb_filter):
     server = Server(couch_url, session=Session(retry_delays=range(10)))
     try:
         if db_name not in server:
@@ -60,7 +54,7 @@ def prepare_couchdb(couch_url, db_name, logger, errors_doc):
         if broken_lots is None:
             db[errors_doc] = {}
 
-        prepare_couchdb_filter(db, 'lots', 'status', STATUS_FILTER, logger)
+        prepare_couchdb_filter(db, 'lots', 'status', couchdb_filter, logger)
 
     except error as e:
         logger.error('Database error: {}'.format(e.message))
@@ -131,7 +125,7 @@ def resolve_broken_lot(db, logger, doc, lot):
         return doc
 
 
-def init_clients(config, logger):
+def init_clients(config, logger, couchdb_filter):
     clients_from_config = {
         'lots_client': {'section': 'lots', 'client_instance': LotsClient},
         'assets_client': {'section': 'assets', 'client_instance': AssetsClient},
@@ -163,7 +157,7 @@ def init_clients(config, logger):
         else:
             db_url = "http://{host}:{port}".format(**config['db'])
 
-        clients_from_config['db'] = prepare_couchdb(db_url, config['db']['name'], logger, config['errors_doc'])
+        clients_from_config['db'] = prepare_couchdb(db_url, config['db']['name'], logger, config['errors_doc'], couchdb_filter)
         result = ('ok', None)
     except Exception as e:
         exceptions.append(e)
@@ -184,3 +178,60 @@ def retry_on_error(exception):
 
 def get_next_status(status_mapping, resource, lotStatus, action):
     return status_mapping[resource][lotStatus][action]
+
+
+def create_certain_condition(place_to_check, items, condition):
+    '''
+
+    :param place_to_check: actually a variable or object in filter that should be checked
+    :param items: values to check with value from place_to_check
+    :param condition: type of condition to chain checks
+    :return: condition in string
+
+    >>> lot_aliases = ['loki', 'anotherLoki']
+    >>> create_certain_condition('variable', lot_aliases, '&&')
+    '(variable == "loki" && variable == "anotherLoki")'
+
+    '''
+    result = ''
+    for item in items:
+        if result:
+            result = result + ' {} '.format(condition)
+        result = result + place_to_check + ' == "{}"'.format(item)
+    return '({})'.format(result) if result else ''
+
+
+def create_filter_condition(lot_aliases, handled_statuses):
+    '''
+    :param lot_aliases: list of lot aliases
+    :param handled_statuses: list of status that should be handled for certail lotType
+    :return: condition that will be used in filter for couchdb
+
+    >>> lot_aliases = ['loki', 'anotherLoki']
+    >>> handled_statuses = ['pending', 'verification']
+    >>> create_filter_condition(lot_aliases, handled_statuses)
+    '(doc.lotType == "loki" || doc.lotType == "anotherLoki") && (doc.status == "pending" || doc.status == "verification")'
+    >>> create_filter_condition(lot_aliases, [])
+    '(doc.lotType == "loki" || doc.lotType == "anotherLoki")'
+    >>> create_filter_condition([], handled_statuses)
+    '(doc.status == "pending" || doc.status == "verification")'
+
+    '''
+
+    conditions = []
+
+    conditions.append(create_certain_condition('doc.lotType', lot_aliases, '||'))
+    conditions.append(create_certain_condition('doc.status', handled_statuses, '||'))
+
+    filter_condition = ''
+
+    for condition in conditions:
+        if not condition:
+            continue
+
+        if filter_condition:
+            filter_condition = filter_condition + ' && '
+
+        filter_condition = filter_condition + condition
+
+    return filter_condition

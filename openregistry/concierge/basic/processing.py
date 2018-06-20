@@ -16,6 +16,7 @@ from openregistry.concierge.utils import (
     log_broken_lot,
     get_next_status,
     retry_on_error,
+    create_filter_condition
 )
 from openregistry.concierge.basic.constants import (
     NEXT_STATUS_CHANGE
@@ -45,6 +46,10 @@ class ProcessingBasic(object):
         for key, item in clients.items():
             setattr(self, key, item)
         self.errors_doc = errors_doc
+
+    @staticmethod
+    def get_condition(config):
+        return create_filter_condition(config.get('aliases', []), HANDLED_STATUSES)
 
     def _register_allowed_assets(self):
         for _, asset_aliases in self.config.get('assets', {}).items():

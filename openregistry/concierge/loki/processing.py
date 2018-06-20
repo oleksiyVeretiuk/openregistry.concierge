@@ -24,6 +24,7 @@ from openregistry.concierge.utils import (
     log_broken_lot,
     get_next_status,
     retry_on_error,
+    create_filter_condition
 )
 from openregistry.concierge.constants import TZ
 from openregistry.concierge.loki.utils import calculate_business_date
@@ -63,6 +64,10 @@ class ProcessingLoki(object):
         for key, item in clients.items():
             setattr(self, key, item)
         self.errors_doc = errors_doc
+
+    @staticmethod
+    def get_condition(config):
+        return create_filter_condition(config.get('aliases', []), HANDLED_STATUSES)
 
     def _register_allowed_procurement_method_types(self):
         self.allowed_pmt += self.config.get('planned_pmt', [])

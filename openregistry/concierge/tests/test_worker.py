@@ -16,9 +16,11 @@ def test_concierge_init(db, logger, mocker):
     mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True)
     mocker.patch('openregistry.concierge.utils.AuctionsClient', autospec=True)
     processing_loki = mocker.patch('openregistry.concierge.worker.ProcessingLoki', autospec=True)
+    processing_loki.get_condition.return_value = 'condition_loki'
     processing_loki = processing_loki.return_value
     processing_loki.handled_lot_types = ['loki']
     processing_basic = mocker.patch('openregistry.concierge.worker.ProcessingBasic', autospec=True)
+    processing_basic.get_condition.return_value = 'condition_basic'
     processing_basic = processing_basic.return_value
     processing_basic.handled_lot_types = ['basic']
     BotWorker(TEST_CONFIG)
