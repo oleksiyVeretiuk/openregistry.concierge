@@ -12,7 +12,7 @@ from openregistry.concierge.constants import TZ
 from openregistry.concierge.loki.tests.conftest import TEST_CONFIG
 from openregistry.concierge.loki.processing import logger as LOGGER
 from openregistry.concierge.loki.utils import calculate_business_date
-from openregistry.concierge.loki.processing import ProcessingLoki
+from openregistry.concierge.loki.processing import ProcessingLoki, HANDLED_STATUSES
 from openprocurement_client.exceptions import (
     Forbidden,
     ResourceNotFound,
@@ -27,11 +27,18 @@ ROOT = os.path.dirname(__file__) + '/data/'
 def test_processing_loki_init(db, logger, mocker):
     lots_client = mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True).return_value
     assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
+    mock_create_condition = mocker.patch('openregistry.concierge.loki.processing.create_filter_condition', autospec=True)
+    mock_create_condition.return_value = 'condition'
+
     clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
     errors_doc = db.get(TEST_CONFIG['errors_doc'])
     processing = ProcessingLoki(TEST_CONFIG['lots']['loki'], clients, errors_doc)
     assert set(processing.allowed_asset_types) == {'bounce', 'domain'}
     assert set(processing.handled_lot_types) == {'loki'}
+
+    assert processing.get_condition(TEST_CONFIG['lots']['loki']) == 'condition'
+    assert mock_create_condition.call_count == 1
+    mock_create_condition.assert_called_with(TEST_CONFIG['lots']['loki']['aliases'], HANDLED_STATUSES)
 
 
 def test_patch_lot(bot, logger, mocker):

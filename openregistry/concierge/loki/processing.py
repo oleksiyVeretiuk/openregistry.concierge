@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from dpath import util
 from isodate import parse_duration
 from iso8601 import parse_date
+from re import compile
 
 from openprocurement_client.exceptions import (
     Forbidden,
@@ -24,6 +25,7 @@ from openregistry.concierge.utils import (
     log_broken_lot,
     get_next_status,
     retry_on_error,
+    create_filter_condition
 )
 from openregistry.concierge.constants import TZ
 from openregistry.concierge.loki.utils import calculate_business_date
@@ -40,6 +42,8 @@ EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, P
 
 HANDLED_STATUSES = ('verification', 'pending.dissolution', 'pending.sold', 'pending.deleted', 'active.salable')
 HANDLED_AUCTION_STATUSES = ('scheduled', 'unsuccessful')
+
+ACCELERATOR_RE = compile(r'.accelerator=(?P<accelerator>\d+)')
 
 IS_BOT_WORKING = True
 
@@ -63,6 +67,10 @@ class ProcessingLoki(object):
         for key, item in clients.items():
             setattr(self, key, item)
         self.errors_doc = errors_doc
+
+    @staticmethod
+    def get_condition(config):
+        return create_filter_condition(config.get('aliases', []), HANDLED_STATUSES)
 
     def _register_allowed_procurement_method_types(self):
         self.allowed_pmt += self.config.get('planned_pmt', [])
@@ -221,10 +229,13 @@ class ProcessingLoki(object):
         if auction_from_lot['tenderAttempts'] == 1:
             auction['auctionPeriod'] = auction_from_lot['auctionPeriod']
             start_date = parse_date(auction_from_lot['auctionPeriod']['startDate'])
-            if all([p in auction.get('procurementMethodDetails', '') for p in("accelerator=1440", "quick")]):
+
+            re_obj = ACCELERATOR_RE.search(auction.get('procurementMethodDetails', ''))
+
+            if re_obj and 'accelerator' in re_obj.groupdict():
                 calc_date = calculate_business_date(
                     start=now_date,
-                    delta=timedelta(minutes=20),
+                    delta= timedelta(days=20)/int(re_obj.groupdict()['accelerator']),
                     context=None,
                     working_days=False
                 )

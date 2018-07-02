@@ -105,3 +105,6 @@ bin/
 .mr.developer.cfg
 /src
 /cover
+
+# Pytest
+.pytest_cache/

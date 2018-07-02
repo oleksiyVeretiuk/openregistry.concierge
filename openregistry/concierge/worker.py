@@ -19,7 +19,8 @@ from openprocurement_client.exceptions import (
 from openregistry.concierge.utils import (
     resolve_broken_lot,
     continuous_changes_feed,
-    init_clients
+    init_clients,
+    STATUS_FILTER
 )
 from openregistry.concierge.loki.processing import ProcessingLoki
 from openregistry.concierge.basic.processing import ProcessingBasic
@@ -55,7 +56,14 @@ class BotWorker(object):
         self.config = config
         self.killer = GracefulKiller()
 
-        created_clients = init_clients(config, logger)
+        filter_condition = '({}) || ({})'.format(
+            ProcessingLoki.get_condition(config['lots']['loki']),
+            ProcessingBasic.get_condition(config['lots']['basic'])
+        )
+
+        couchdb_filter = STATUS_FILTER % filter_condition
+
+        created_clients = init_clients(config, logger, couchdb_filter)
 
         for key, item in created_clients.items():
             setattr(self, key, item)
