@@ -280,13 +280,17 @@ class ProcessingLoki(object):
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
             else:
                 asset = self.assets_client.get_asset(lot['assets'][0]).data
-                asset_decision = deepcopy(asset['decisions'][0])
-                asset_decision['relatedItem'] = asset['id']
+                asset_decisions = []
+
+                for dec in deepcopy(asset['decisions']):
+                    dec.update(
+                        {'relatedItem': asset['id']}
+                    )
+                    asset_decisions.append(dec)
+
                 to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
-                to_patch['decisions'] = [
-                    lot['decisions'][0],
-                    asset_decision
-                ]
+                to_patch['decisions'] = lot['decisions'] + asset_decisions
+
                 result = self.patch_lot(
                     lot,
                     get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
