@@ -910,6 +910,13 @@ def test_dict_from_object(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
     lot = lots[7]['data']
+    lot['contracts'] = []
+    lot['contracts'].append(
+        {
+            'type': 'yoke'
+        }
+    )
+
     auction_index = 0
     auction_dict = bot._dict_from_object(KEYS_FOR_AUCTION_CREATE, lot, auction_index)
     assert auction_dict['title'] == lot['title']
@@ -921,6 +928,7 @@ def test_dict_from_object(bot, logger, mocker):
     assert auction_dict['minimalStep'] == lot['auctions'][auction_index]['minimalStep']
     assert auction_dict['guarantee'] == lot['auctions'][auction_index]['guarantee']
     assert auction_dict['registrationFee'] == lot['auctions'][auction_index]['registrationFee']
+    assert auction_dict['contractTerms']['type'] == lot['contracts'][0]['type']
     assert 'documents' not in auction_dict
     assert 'backAccount' not in auction_dict
     assert 'auctionParameters' not in auction_dict
