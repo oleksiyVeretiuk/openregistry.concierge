@@ -94,14 +94,14 @@ class ProcessingBasic(object):
         """
         lot_available = self.check_lot(lot)
         if not lot_available:
-            logger.info("Skipping lot {}".format(lot['id']))
+            logger.info("Skipping Lot {}".format(lot['id']))
             return
-        logger.info("Processing lot {} in status {}".format(lot['id'], lot['status']))
+        logger.info("Processing Lot {} in status {}".format(lot['id'], lot['status']))
         if lot['status'] in ['verification']:
             try:
                 assets_available = self.check_assets(lot)
             except RequestFailed:
-                logger.info("Due to fail in getting assets, lot {} is skipped".format(lot['id']))
+                logger.info("Due to fail in getting assets, Lot {} is skipped".format(lot['id']))
             else:
                 if assets_available:
                     self._add_assets_to_lot(lot)
@@ -150,14 +150,14 @@ class ProcessingBasic(object):
                     get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
                 )
                 if result is False:
-                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching lot to active.salable')
+                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to active.salable')
 
     def _process_lot_and_assets(self, lot, lot_status, asset_status):
         result, _ = self.patch_assets(lot, asset_status)
         if result:
-            logger.info("Assets {} from lot {} will be patched to '{}'".format(lot['assets'], lot['id'], asset_status))
+            logger.info("Assets {} from Lot {} will be patched to '{}'".format(lot['assets'], lot['id'], asset_status))
         else:
-            logger.warning("Not valid assets {} in lot {}".format(lot['assets'], lot['id']))
+            logger.warning("Not valid assets {} in Lot {}".format(lot['assets'], lot['id']))
         self.patch_lot(lot, lot_status)
 
     def check_lot(self, lot):
@@ -174,12 +174,12 @@ class ProcessingBasic(object):
         """
         try:
             actual_status = self.lots_client.get_lot(lot['id']).data.status
-            logger.info('Successfully got lot {0}'.format(lot['id']))
+            logger.info('Successfully got Lot {0}'.format(lot['id']))
         except ResourceNotFound as e:
-            logger.error('Failed to get lot {0}: {1}'.format(lot['id'], e.message))
+            logger.error('Failed to get Lot {0}: {1}'.format(lot['id'], e.message))
             return False
         except RequestFailed as e:
-            logger.error('Failed to get lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
+            logger.error('Failed to get Lot {0}. Status code: {1}'.format(lot['id'], e.status_code))
             return False
         if lot['status'] != actual_status:
             logger.warning(
@@ -295,9 +295,9 @@ class ProcessingBasic(object):
             message = e.message
             if e.status_code >= 500:
                 message = 'Server error: {}'.format(e.status_code)
-            logger.error("Failed to patch lot {} to {} ({})".format(lot['id'], status, message))
+            logger.error("Failed to patch Lot {} to {} ({})".format(lot['id'], status, message))
             return False
         else:
-            logger.info("Successfully patched lot {} to {}".format(lot['id'], status),
+            logger.info("Successfully patched Lot {} to {}".format(lot['id'], status),
                         extra={'MESSAGE_ID': 'patch_lot'})
             return True
