@@ -137,3 +137,36 @@ def test_run(bot, logger, mocker, almost_always_true):
 
     assert mock_process_basic.process_lots.call_count == 6
     assert mock_process_loki.process_lots.call_count == 2
+
+
+def test_process_single_lot(bot, logger, mocker):
+    mock_lots_client = mocker.patch.object(bot, 'lots_client', autospec=True)
+    mock_process_lot = mocker.patch.object(bot, 'process_lot', autospec=True)
+    lot_id = '1' * 32
+
+    lot = {'id': lot_id, 'status': 'draft'}
+    mock_lots_client.get_lot.side_effect = iter([
+        lot
+    ])
+    bot.process_single_lot(lot_id)
+
+    assert mock_lots_client.get_lot.call_count == 1
+    mock_lots_client.get_lot.assert_called_with(lot_id)
+
+    assert mock_process_lot.call_count == 1
+    mock_process_lot.assert_called_with(lot)
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[0] == 'Received Lot {} in status {}'.format(lot_id, lot['status'])
+
+    # When lot doesn't exist
+    mock_lots_client.get_lot.side_effect = iter([
+        None
+    ])
+    bot.process_single_lot(lot_id)
+
+    assert mock_lots_client.get_lot.call_count == 2
+    mock_lots_client.get_lot.assert_called_with(lot_id)
+
+    assert mock_process_lot.call_count == 1
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[1] == 'Lot with id {} not found in API'.format(lot_id)

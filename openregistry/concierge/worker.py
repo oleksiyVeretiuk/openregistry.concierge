@@ -83,6 +83,28 @@ class BotWorker(object):
         for lt in processing.handled_lot_types:
             self.lot_type_processing_configurator[lt] = processing
 
+    def process_lot(self, lot):
+        if lot['lotType'] not in self.lot_type_processing_configurator:
+            logger.warning('Such lotType %s is not supported by this concierge configuration' % lot['lotType'])
+            return
+        broken_lot = self.errors_doc.get(lot['id'], None)
+        if broken_lot:
+            if broken_lot['rev'] == lot['rev']:
+                return
+            else:
+                errors_doc = resolve_broken_lot(self.db, logger, self.errors_doc, lot)
+                self.lot_type_processing_configurator[lot['lotType']].process_lots(errors_doc[lot['id']])
+        else:
+            self.lot_type_processing_configurator[lot['lotType']].process_lots(lot)
+
+    def process_single_lot(self, lot_id):
+        lot = self.lots_client.get_lot(lot_id)
+        if lot:
+            logger.info('Received Lot {} in status {}'.format(lot['id'], lot['status']))
+            self.process_lot(lot)
+            return
+        logger.warning('Lot with id {} not found in API'.format(lot_id))
+
     def run(self):
         """
         Starts an infinite while loop in which lots, received from db,
@@ -104,18 +126,7 @@ class BotWorker(object):
         logger.info("Starting worker")
         while IS_BOT_WORKING:
             for lot in self.get_lot():
-                if lot['lotType'] not in self.lot_type_processing_configurator:
-                    logger.warning('Such lotType %s is not supported by this concierge configuration' % lot['lotType'])
-                    continue
-                broken_lot = self.errors_doc.get(lot['id'], None)
-                if broken_lot:
-                    if broken_lot['rev'] == lot['rev']:
-                        continue
-                    else:
-                        errors_doc = resolve_broken_lot(self.db, logger, self.errors_doc, lot)
-                        self.lot_type_processing_configurator[lot['lotType']].process_lots(errors_doc[lot['id']])
-                else:
-                    self.lot_type_processing_configurator[lot['lotType']].process_lots(lot)
+                self.process_lot(lot)
 
                 if self.killer.kill_now:
                     break
@@ -142,6 +153,7 @@ class BotWorker(object):
 def main():
     parser = argparse.ArgumentParser(description='---- OpenRegistry Concierge ----')
     parser.add_argument('config', type=str, help='Path to configuration file')
+    parser.add_argument('lot_id', type=str, help='ID to process single lot', default=None)
     parser.add_argument('-t', dest='check', action='store_const',
                         const=True, default=False,
                         help='Clients check only')
@@ -153,6 +165,9 @@ def main():
         logging.config.dictConfig(config)
     DEFAULTS.update(config)
     worker = BotWorker(DEFAULTS)
+    if params.lot_id:
+        worker.process_single_lot(params.lot_id)
+        exit()
     if params.check:
         exit()
     worker.run()
