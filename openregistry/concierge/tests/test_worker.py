@@ -140,7 +140,7 @@ def test_run(bot, logger, mocker, almost_always_true):
 
 
 def test_process_single_lot(bot, logger, mocker):
-    mock_lots_client = mocker.patch.object(bot, 'lots_client', autospec=True)
+    mock_lots_client = bot.lots_client
     mock_process_lot = mocker.patch.object(bot, 'process_lot', autospec=True)
     lot_id = '1' * 32
 
