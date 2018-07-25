@@ -74,7 +74,8 @@ def db(request):
 def bot(mocker, db):
     lots_client = mocker.patch('openregistry.concierge.utils.LotsClient', autospec=True).return_value
     assets_client = mocker.patch('openregistry.concierge.utils.AssetsClient', autospec=True).return_value
-    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db}
+    lots_mapping = mocker.MagicMock()
+    clients = {'lots_client': lots_client, 'assets_client': assets_client, 'db': db, 'lots_mapping': lots_mapping}
     errors_doc = db.get(TEST_CONFIG['errors_doc'])
 
     from retrying import retry as base_retry
