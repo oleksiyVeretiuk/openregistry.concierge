@@ -127,7 +127,8 @@ class BotWorker(object):
         logger.info("Starting worker")
         while IS_BOT_WORKING:
             for lot in self.get_lot():
-                self.process_lot(lot)
+                if not self.lots_mapping.has(lot['id']):
+                    self.process_lot(lot)
 
                 if self.killer.kill_now:
                     break
