@@ -304,7 +304,11 @@ class ProcessingLoki(object):
                     to_patch
                 )
                 if result is False:
-                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to active.salable')
+                    self.patch_lot(
+                        lot,
+                        'composing'
+                    )
+                    log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to pending')
 
     def _process_lot_and_assets(self, lot, lot_status, asset_status):
         result, _ = self.patch_assets(lot, asset_status)
