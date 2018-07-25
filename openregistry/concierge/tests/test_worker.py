@@ -62,7 +62,7 @@ def test_get_lot(bot, logger, mocker):
 
 def test_run(bot, logger, mocker, almost_always_true):
     if not bot.lots_mapping.db.is_empty():
-        Db.destroy('lots_mapping')
+        Db('lots_mapping').destroy('lots_mapping')
 
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
@@ -82,9 +82,10 @@ def test_run(bot, logger, mocker, almost_always_true):
     assert mock_process_lot.call_count == 3
     mock_process_lot.assert_called_with(lots[2]['data'])
 
+
     bot.lots_mapping.put(str(lots[0]['data']['id']), True)
     mocker.patch('openregistry.concierge.worker.IS_BOT_WORKING', almost_always_true(3))
-    mock_get_lot.return_value = (lot['data'] for lot in lots[:3])
+    mock_get_lot.return_value = (lot['data'] for lot in lots[3:5])
 
     bot.run()
 
