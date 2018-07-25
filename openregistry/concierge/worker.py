@@ -127,8 +127,6 @@ class BotWorker(object):
         logger.info("Starting worker")
         while IS_BOT_WORKING:
             for lot in self.get_lot():
-                print lot['id']
-                print self.lots_mapping.has(lot['id'])
                 if not self.lots_mapping.has(lot['id']):
                     if self.lots_mapping.type == 'redis':
                         self.lots_mapping.put(str(lot['id']), True)
