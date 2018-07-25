@@ -15,7 +15,8 @@ from openprocurement_client.exceptions import (
     PreconditionFailed,
 )
 
-from .design import sync_design
+from openregistry.concierge.design import sync_design
+from openregistry.concierge.mapping import prepare_lot_mapping
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
@@ -163,6 +164,18 @@ def init_clients(config, logger, couchdb_filter):
         exceptions.append(e)
         result = ('failed', e)
     logger.check('couchdb - {}'.format(result[0]), result[1])
+
+    # Processed lots mapping check
+    try:
+        clients_from_config['lots_mapping'] = prepare_lot_mapping(
+            config.get('lots_mapping', {}), check=True, logger=logger
+        )
+        result = ('ok', None)
+    except Exception as e:
+        exceptions.append(e)
+        result = ('failed', e)
+
+    logger.check('lots_mapping - {}'.format(result[0]), result[1])
 
     if exceptions:
         raise exceptions[0]
