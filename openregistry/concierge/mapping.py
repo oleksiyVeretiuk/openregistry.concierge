@@ -7,11 +7,13 @@ from lazydb import Db as LazyDB
 
 class LotMapping(object):
     """Mapping for processed auctions"""
+    type = ''
 
     def __init__(self, config, logger):
         self.logger = logger
         self.config = config
         if 'host' in self.config:
+            self.type = 'redis'
             config = {
                 'host': self.config.get('host'),
                 'port': self.config.get('port') or 6379,
@@ -25,6 +27,7 @@ class LotMapping(object):
             self._set_value = set
             self._has_value = self.db.exists
         else:
+            self.type = 'lazy'
             db = self.config.get('name', 'lots_mapping')
             self.db = LazyDB(db)
             self.logger.info('Set lazydb "{}" as lots mapping'.format(db))
