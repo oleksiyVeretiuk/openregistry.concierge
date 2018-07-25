@@ -242,6 +242,8 @@ def test_patch_assets_active_fail(bot, logger, mocker):
 
 def test_process_lots(bot, logger, mocker):
     mock_get_asset = mocker.MagicMock()
+    mock_mapping = bot.lots_mapping
+
     bot.assets_client.get_asset = mock_get_asset
 
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
@@ -338,6 +340,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_assets.call_count == 2
     assert mock_check_assets.call_args[0] == (verification_lot,)
 
+    assert mock_mapping.put.call_count == 1
+    mock_mapping.put.assert_called_with(verification_lot['id'], True)
+
     assert mock_check_lot.call_count == 2
     assert mock_check_lot.call_args[0] == (verification_lot,)
 
@@ -402,6 +407,9 @@ def test_process_lots(bot, logger, mocker):
     ])
     bot.process_lots(pending_dissolution_lot)  # assets_available: None; patch_assets: (True, []); check_lot: True
 
+    assert mock_mapping.put.call_count == 2
+    mock_mapping.put.assert_called_with(pending_dissolution_lot['id'], True)
+
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[5] == 'Processing Lot b844573afaa24e4fb098f3027e605c87 in status pending.dissolution'
     assert log_strings[6] == "Assets {} from Lot {} will be patched to 'pending'".format(pending_dissolution_lot['assets'],
@@ -445,6 +453,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 7
     assert mock_check_lot.call_args[0] == (pending_dissolution_lot,)
 
+    assert mock_mapping.put.call_count == 3
+    mock_mapping.put.assert_called_with(pending_dissolution_lot['id'], True)
+
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (pending_dissolution_lot, 'pending')
 
@@ -469,6 +480,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_args[0] == (recomposed_lot,)
     assert mock_patch_lot.call_args[0] == (recomposed_lot, 'pending')
 
+    assert mock_mapping.put.call_count == 4
+    mock_mapping.put.assert_called_with(recomposed_lot['id'], True)
+
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending')
 
@@ -488,6 +502,8 @@ def test_process_lots(bot, logger, mocker):
     assert log_strings[12] == 'Processing Lot {} in status recomposed'.format(recomposed_lot['id'])
     assert log_strings[13] == 'Not valid assets {} in Lot {}'.format(recomposed_lot['assets'], recomposed_lot['id'])
     assert mock_check_lot.call_count == 9
+    assert mock_mapping.put.call_count == 5
+    mock_mapping.put.assert_called_with(recomposed_lot['id'], True)
     assert mock_check_lot.call_args[0] == (recomposed_lot,)
     assert mock_patch_lot.call_args[0] == (recomposed_lot, 'pending')
 
@@ -517,6 +533,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_args[0] == (pending_sold_lot,)
     assert mock_patch_lot.call_args[0] == (pending_sold_lot, 'sold')
 
+    assert mock_mapping.put.call_count == 6
+    mock_mapping.put.assert_called_with(pending_sold_lot['id'], True)
+
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
 
@@ -539,6 +558,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 11
     assert mock_check_lot.call_args[0] == (pending_sold_lot,)
     assert mock_patch_lot.call_args[0] == (pending_sold_lot, 'sold')
+
+    assert mock_mapping.put.call_count == 7
+    mock_mapping.put.assert_called_with(pending_sold_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
@@ -566,6 +588,9 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 12
     assert mock_check_lot.call_args[0] == (pending_deleted_lot,)
     assert mock_patch_lot.call_args[0] == (pending_deleted_lot, 'deleted')
+
+    assert mock_mapping.put.call_count == 8
+    mock_mapping.put.assert_called_with(pending_deleted_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
     assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending')

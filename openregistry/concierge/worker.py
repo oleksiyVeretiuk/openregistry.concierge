@@ -100,6 +100,7 @@ class BotWorker(object):
     def process_single_lot(self, lot_id):
         lot = self.lots_client.get_lot(lot_id)
         if lot:
+            lot = lot['data']
             logger.info('Received Lot {} in status {}'.format(lot['id'], lot['status']))
             self.process_lot(lot)
             return
@@ -126,7 +127,10 @@ class BotWorker(object):
         logger.info("Starting worker")
         while IS_BOT_WORKING:
             for lot in self.get_lot():
-                self.process_lot(lot)
+                if not self.lots_mapping.has(lot['id']):
+                    if self.lots_mapping.type == 'redis':
+                        self.lots_mapping.put(str(lot['id']), True)
+                    self.process_lot(lot)
 
                 if self.killer.kill_now:
                     break
@@ -153,7 +157,7 @@ class BotWorker(object):
 def main():
     parser = argparse.ArgumentParser(description='---- OpenRegistry Concierge ----')
     parser.add_argument('config', type=str, help='Path to configuration file')
-    parser.add_argument('lot_id', type=str, help='ID to process single lot', default=None)
+    parser.add_argument('-id', dest='lot_id', type=str, help='ID to process single lot', default="")
     parser.add_argument('-t', dest='check', action='store_const',
                         const=True, default=False,
                         help='Clients check only')
