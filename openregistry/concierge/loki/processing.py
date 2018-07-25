@@ -128,7 +128,9 @@ class ProcessingLoki(object):
                 logger.info("Due to fail in getting assets, Lot {} is skipped".format(lot['id']))
             else:
                 if assets_available:
-                    self._add_assets_to_lot(lot)
+                    result = self._add_assets_to_lot(lot)
+                    if result:
+                        self.lots_mapping.put(lot['id'], True)
                 else:
                     self.patch_lot(lot, get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'fail'))
         elif lot['status'] == 'active.salable':
@@ -144,12 +146,15 @@ class ProcessingLoki(object):
                             'relatedProcessID': auction['data']['id']
                         }
                         self._patch_auction(data, lot['id'], lot_auction_id)
+                        self.lots_mapping.put(lot['id'], True)
         else:
-            self._process_lot_and_assets(
+            result = self._process_lot_and_assets(
                 lot,
                 get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish')
             )
+            if result:
+                self.lots_mapping.put(lot['id'], True)
 
     def get_next_auction(self, lot):
         auctions = filter(lambda a: a['status'] == 'scheduled', lot['auctions'])
@@ -267,6 +272,7 @@ class ProcessingLoki(object):
             get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre'),
             lot['id']
         )
+
         if result is False:
             if patched_assets:
                 logger.info("Assets {} will be repatched to 'pending'".format(patched_assets))
@@ -278,6 +284,7 @@ class ProcessingLoki(object):
                         logger,
                         self.errors_doc, lot,
                         'patching assets to {}'.format(get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre')))
+            return False
         else:
             result, _ = self.patch_assets(
                 lot,
@@ -289,6 +296,7 @@ class ProcessingLoki(object):
                 result, _ = self.patch_assets(lot, get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'fail'))
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
+                return False
             else:
                 asset = self.assets_client.get_asset(lot['assets'][0]).data
                 asset_decision = deepcopy(asset['decisions'][0])
@@ -305,6 +313,8 @@ class ProcessingLoki(object):
                 )
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to active.salable')
+                    return False
+                return True
 
     def _process_lot_and_assets(self, lot, lot_status, asset_status):
         result, _ = self.patch_assets(lot, asset_status)
@@ -312,7 +322,8 @@ class ProcessingLoki(object):
             logger.info("Assets {} from Lot {} will be patched to '{}'".format(lot['assets'], lot['id'], asset_status))
         else:
             logger.warning("Not valid assets {} in Lot {}".format(lot['assets'], lot['id']))
-        self.patch_lot(lot, lot_status)
+        result = self.patch_lot(lot, lot_status)
+        return result
 
     def check_lot(self, lot):
         """

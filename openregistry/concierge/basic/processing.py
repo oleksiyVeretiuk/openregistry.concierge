@@ -104,15 +104,19 @@ class ProcessingBasic(object):
                 logger.info("Due to fail in getting assets, Lot {} is skipped".format(lot['id']))
             else:
                 if assets_available:
-                    self._add_assets_to_lot(lot)
+                    result = self._add_assets_to_lot(lot)
+                    if result:
+                        self.lots_mapping.put(lot['id'], True)
                 else:
                     self.patch_lot(lot, get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'fail'))
         else:
-            self._process_lot_and_assets(
+            result = self._process_lot_and_assets(
                 lot,
                 get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish')
             )
+            if result:
+                self.lots_mapping.put(lot['id'], True)
 
     def _add_assets_to_lot(self, lot):
         result, patched_assets = self.patch_assets(
@@ -133,6 +137,7 @@ class ProcessingBasic(object):
                         'patching assets to {}'.format(
                             get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre')
                         ))
+            return False
         else:
             result, _ = self.patch_assets(
                 lot,
@@ -144,6 +149,7 @@ class ProcessingBasic(object):
                 result, _ = self.patch_assets(lot, get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'fail'))
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
+                return False
             else:
                 result = self.patch_lot(
                     lot,
@@ -151,6 +157,8 @@ class ProcessingBasic(object):
                 )
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to active.salable')
+                    return False
+                return True
 
     def _process_lot_and_assets(self, lot, lot_status, asset_status):
         result, _ = self.patch_assets(lot, asset_status)
@@ -158,7 +166,7 @@ class ProcessingBasic(object):
             logger.info("Assets {} from Lot {} will be patched to '{}'".format(lot['assets'], lot['id'], asset_status))
         else:
             logger.warning("Not valid assets {} in Lot {}".format(lot['assets'], lot['id']))
-        self.patch_lot(lot, lot_status)
+        return self.patch_lot(lot, lot_status)
 
     def check_lot(self, lot):
         """
