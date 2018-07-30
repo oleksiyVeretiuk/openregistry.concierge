@@ -15,14 +15,16 @@ requires = [
     'openprocurement_client',
     'dpath',
     'pytz',
-    'isodate'
+    'isodate',
+    'redis'
 ]
 
 test_require = {
     'test': [
         'pytest',
         'pytest-mock',
-        'pytest-cov'
+        'pytest-cov',
+        'lazydb'
     ]
 }
 
