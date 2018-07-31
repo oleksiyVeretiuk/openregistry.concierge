@@ -299,13 +299,16 @@ class ProcessingLoki(object):
                 return False
             else:
                 asset = self.assets_client.get_asset(lot['assets'][0]).data
-                asset_decision = deepcopy(asset['decisions'][0])
-                asset_decision['relatedItem'] = asset['id']
+
                 to_patch = {l_key: asset.get(a_key) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
-                to_patch['decisions'] = [
-                    lot['decisions'][0],
-                    asset_decision
-                ]
+                to_patch['decisions'] = deepcopy(lot['decisions'])
+
+                for dec in deepcopy(asset['decisions']):
+                    dec.update(
+                        {'relatedItem': asset['id']}
+                    )
+                    to_patch['decisions'].append(dec)
+
                 result = self.patch_lot(
                     lot,
                     get_next_status(NEXT_STATUS_CHANGE, 'lot', lot['status'], 'finish'),
