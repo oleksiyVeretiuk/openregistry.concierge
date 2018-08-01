@@ -147,6 +147,12 @@ class ProcessingLoki(object):
                         }
                         self._patch_auction(data, lot['id'], lot_auction_id)
                         self.lots_mapping.put(lot['id'], True)
+                    elif result is False:
+                        self._process_lot_and_assets(
+                            lot,
+                            'composing',
+                            'pending'
+                        )
         else:
             result = self._process_lot_and_assets(
                 lot,
@@ -264,7 +270,7 @@ class ProcessingLoki(object):
         except EXCEPTIONS as e:
             message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
             logger.error("Failed to create auction from Lot {} ({})".format(lot['id'], message))
-            return
+            return False
 
     def _add_assets_to_lot(self, lot):
         result, patched_assets = self.patch_assets(
@@ -315,10 +321,7 @@ class ProcessingLoki(object):
                     to_patch
                 )
                 if result is False:
-                    self.patch_lot(
-                        lot,
-                        'composing'
-                    )
+                    self._process_lot_and_assets(lot, 'composing', 'pending')
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to pending')
                     return False
                 return True
