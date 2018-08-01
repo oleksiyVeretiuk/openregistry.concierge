@@ -35,15 +35,19 @@ class LotMapping(object):
             self._has_value = self.db.has
 
     def get(self, key):
+        key = str(key)
         return self.db.get(key)
 
     def put(self, key, value, **kwargs):
+        key = str(key)
         self._set_value(key, value, **kwargs)
 
     def has(self, key):
+        key = str(key)
         return self._has_value(key)
 
     def delete(self, key):
+        key = str(key)
         return self.db.delete(key)
 
 
