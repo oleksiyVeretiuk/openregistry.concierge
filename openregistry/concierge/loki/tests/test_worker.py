@@ -281,6 +281,8 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_assets.call_count == 1
     assert mock_check_assets.call_args[0] == (verification_lot,)
 
+    assert mock_patch_related_processes.call_count == 0
+
     assert mock_check_lot.call_count == 1
     assert mock_check_lot.call_args[0] == (verification_lot,)
 
@@ -301,7 +303,7 @@ def test_process_lots(bot, logger, mocker):
         munchify(assets[9])
     ])
 
-    to_compare = {l_key:assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
+    to_compare = {l_key: assets[9]['data'].get(a_key, None) for a_key, l_key in KEYS_FOR_LOKI_PATCH.items()}
     asset_decision = deepcopy(assets[9]['data']['decisions'][0])
     asset_decision['relatedItem'] = assets[9]['data']['id']
     to_compare['decisions'] = [
@@ -313,6 +315,8 @@ def test_process_lots(bot, logger, mocker):
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[1] == 'Processing Lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
+
+    assert mock_patch_related_processes.call_count == 1
 
     assert mock_check_assets.call_count == 2
     assert mock_check_assets.call_args[0] == (verification_lot,)
@@ -391,6 +395,9 @@ def test_process_lots(bot, logger, mocker):
     ])
     mock_patch_lot.side_effect = iter([False, True])
     bot.process_lots(verification_lot)
+
+    assert mock_patch_related_processes.call_count == 3
+    mock_patch_related_processes.assert_called_with(verification_lot, cleanup=True)
 
     assert mock_check_assets.call_count == 5
     assert mock_check_assets.call_args[0] == (verification_lot,)
@@ -567,6 +574,9 @@ def test_process_lots(bot, logger, mocker):
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[16] == 'Processing Lot {} in status verification'.format(loki_verfication_lot['id'])
+
+    assert mock_patch_related_processes.call_count == 4
+
     assert mock_check_lot.call_count == 11
     assert mock_check_lot.call_args[0] == (loki_verfication_lot,)
 
@@ -775,6 +785,133 @@ def test_process_lots(bot, logger, mocker):
     mock_check_previous_auction.assert_called_with(active_salable_lot)
 
     assert mock_mapping.put.call_count == 8
+
+    # Test working _patch_lot_asset_related_processes
+    mock_patch_related_processes.return_value = (True, ['all_rPs'])
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+    ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+
+    bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[1] == 'Processing Lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
+
+    assert mock_patch_related_processes.call_count == 5
+    mock_patch_related_processes.assert_called_with(verification_lot)
+
+    assert mock_check_assets.call_count == 11
+    assert mock_check_assets.call_args[0] == (verification_lot,)
+
+    assert mock_check_lot.call_count == 17
+    assert mock_check_lot.call_args[0] == (verification_lot,)
+
+    assert mock_patch_assets.call_count == 16
+    mock_patch_assets.assert_called_with(verification_lot, 'active', verification_lot['id'])
+
+    assert mock_patch_lot.call_count == 13
+    assert mock_patch_lot.call_args[0] == (verification_lot, 'pending', to_compare)
+
+    assert mock_mapping.put.call_count == 9
+    mock_mapping.put.assert_called_with(verification_lot['id'], True)
+
+    # Test when _patch_lot_asset_related_processes can`t patch
+    mock_patch_related_processes.return_value = (False, [])
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+    ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+
+    bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[1] == 'Processing Lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
+
+    assert mock_patch_related_processes.call_count == 6
+    mock_patch_related_processes.assert_called_with(verification_lot)
+
+    assert mock_check_assets.call_count == 12
+    assert mock_check_assets.call_args[0] == (verification_lot,)
+
+    assert mock_check_lot.call_count == 18
+    assert mock_check_lot.call_args[0] == (verification_lot,)
+
+    assert mock_patch_assets.call_count == 19
+
+    mock_patch_assets.assert_called_with(verification_lot, 'pending')
+
+    assert mock_patch_lot.call_count == 13
+
+    assert mock_mapping.put.call_count == 9
+
+    # Test when _patch_lot_asset_related_processes can`t patch all but patch some
+    related_process_list = [
+        {
+            'type': 'asset',
+            'id': '2' * 32,
+            'relatedProcessID': '1' * 32
+        }
+    ]
+    mock_patch_related_processes.return_value = (False, related_process_list)
+    mock_check_lot.side_effect = iter([
+        True
+    ])
+    mock_check_assets.side_effect = iter([
+        True
+    ])
+    mock_patch_assets.side_effect = iter([
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+        (True, ['all_assets']),
+    ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+
+    bot.process_lots(verification_lot)  # assets_available: True; patch_assets: [(True, []), (True, [])]; check_lot: True
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[1] == 'Processing Lot 9ee8f769438e403ebfb17b2240aedcf1 in status verification'
+
+    assert mock_patch_related_processes.call_count == 8
+    lot_with_patched_rps = {
+        'id': verification_lot['id'],
+        'relatedProcesses': related_process_list
+    }
+    mock_patch_related_processes.assert_called_with(lot_with_patched_rps, cleanup=True)
+
+    assert mock_check_assets.call_count == 13
+    assert mock_check_assets.call_args[0] == (verification_lot,)
+
+    assert mock_check_lot.call_count == 19
+    assert mock_check_lot.call_args[0] == (verification_lot,)
+
+    assert mock_patch_assets.call_count == 22
+    mock_patch_assets.assert_called_with(verification_lot, 'pending')
+
+    assert mock_patch_lot.call_count == 13
+
+    assert mock_mapping.put.call_count == 9
 
 
 def test_process_lots_broken(bot, logger, mocker):
@@ -1441,6 +1578,7 @@ def test_patch_auction(bot, logger, mocker):
         subitem_id='1' * 32
     )
 
+
 def test_check_previous_auction(bot, logger, mocker):
     with open(ROOT + 'lots.json') as lots:
         lots = load(lots)
@@ -1467,3 +1605,110 @@ def test_check_previous_auction(bot, logger, mocker):
     lot['auctions'][2]['status'] = 'unsuccessful'
     result = bot.check_previous_auction(lot)
     assert result is False
+
+
+def test_patch_lot_asset_related_processes(bot, logger, mocker):
+    with open(ROOT + 'lots.json') as lots:
+        lots = load(lots)
+
+    with open(ROOT + 'assets.json') as assets:
+        assets = load(assets)
+
+    lot = lots[0]['data']
+    related_processes = [rP for rP in lot['relatedProcesses'] if rP['type'] == 'asset']
+    used_rP = related_processes[-1]
+
+    mock_get_asset = mocker.MagicMock()
+    mock_patch_related_process = mocker.MagicMock()
+    bot.assets_client.get_asset = mock_get_asset
+    bot._patch_related_process = mock_patch_related_process
+
+    # Cleanup False
+    mock_get_asset.side_effect = [
+        munchify(assets[0])
+    ]
+
+    result, patched_rPs = bot._patch_lot_asset_related_processes(lot=lot)
+
+    data = {'identifier': assets[0]['data']['assetID']}
+
+    assert result is True
+    assert patched_rPs == [
+        used_rP
+    ]
+
+    assert mock_get_asset.call_count == 1
+    mock_get_asset.assert_called_with(used_rP['relatedProcessID'])
+
+    assert mock_patch_related_process.call_count == 1
+    mock_patch_related_process.assert_called_with(data, lot['id'], used_rP['id'])
+
+    # Cleanup True
+    mock_get_asset.side_effect = [
+        munchify(assets[0])
+    ]
+
+    result, patched_rPs = bot._patch_lot_asset_related_processes(lot=lot, cleanup=True)
+
+    data = {'identifier': ''}
+
+    assert result is True
+    assert patched_rPs == [
+        used_rP
+    ]
+
+    assert mock_get_asset.call_count == 2
+    mock_get_asset.assert_called_with(used_rP['relatedProcessID'])
+
+    assert mock_patch_related_process.call_count == 2
+    mock_patch_related_process.assert_called_with(data, lot['id'], used_rP['id'])
+
+
+def test_patch_related_process(bot, logger, mocker):
+    with open(ROOT + 'lots.json') as lots:
+        lots = load(lots)
+
+    lot = lots[0]['data']
+
+    mock_lots_client = bot.lots_client
+
+    related_process_id = '1' * 32
+    # Test when patch is success
+    patched_data = {'identifier': 'SOME-VALUE'}
+    mocked_patch_subitem = mock_lots_client.patch_resource_item_subitem
+
+    bot._patch_related_process(patched_data, lot['id'], related_process_id)
+
+    assert mocked_patch_subitem.call_count == 1
+    mocked_patch_subitem.assert_called_with(
+        resource_item_id=lot['id'],
+        patch_data={'data': patched_data},
+        subitem_name='related-processes',
+        subitem_id=related_process_id
+    )
+
+    log_strings = logger.log_capture_string.getvalue().split('\n')
+    assert log_strings[0] == "Successfully patched Lot.auction {} from Lot {})".format(related_process_id, lot['id'])
+
+    # Test when post is failed
+    mocked_patch_subitem.side_effect = iter([
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+        RequestFailed(response=munchify({"text": "Bad Gateway", "status_code": 502})),
+    ])
+
+    try:
+        bot._patch_related_process(patched_data, lot['id'], related_process_id)
+    except RequestFailed as ex:
+        pass
+
+    assert isinstance(ex, RequestFailed) is True
+    assert mocked_patch_subitem.call_count == 6
+    mocked_patch_subitem.assert_called_with(
+        resource_item_id=lot['id'],
+        patch_data={'data': patched_data},
+        subitem_name='related-processes',
+        subitem_id='1' * 32
+    )
