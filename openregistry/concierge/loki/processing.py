@@ -205,12 +205,11 @@ class ProcessingLoki(object):
         auction = self.lots_client.patch_resource_item_subitem(
             resource_item_id=lot_id,
             patch_data={'data': data},
-            subitem_name='relatedProcesses',
+            subitem_name='related-processes',
             subitem_id=related_process_id
         )
         logger.info("Successfully patched Lot.auction {} from Lot {})".format(related_process_id, lot_id))
         return auction
-
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _extract_transfer_token(self, lot_id):
@@ -326,6 +325,11 @@ class ProcessingLoki(object):
                         'relatedProcesses': patched_rPs
                     }
                     self._patch_lot_asset_related_processes(lot_with_patched_rPs, cleanup=True)
+                    self.patch_assets(lot, 'pending')
+                    return False
+                elif not result:
+                    self.patch_assets(lot, 'pending')
+                    return False
 
                 asset = self.assets_client.get_asset(lot['relatedProcesses'][0]['relatedProcessID']).data
 
@@ -345,16 +349,17 @@ class ProcessingLoki(object):
                 )
                 if result is False:
                     self._process_lot_and_assets(lot, 'composing', 'pending')
+                    self._patch_lot_asset_related_processes(lot, cleanup=True)
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to pending')
                     return False
                 return True
 
-    def _patch_lot_asset_related_processes(self, lot, cleanup=True):
+    def _patch_lot_asset_related_processes(self, lot, cleanup=False):
         related_processes = [rP for rP in lot['relatedProcesses'] if rP['type'] == 'asset']
         patched_rPs = []
         is_all_patched = True
         for rP in related_processes:
-            asset = self.assets_client.get_asset(rP['relatedProcessID'])
+            asset = self.assets_client.get_asset(rP['relatedProcessID']).data
             if not cleanup:
                 data = {'identifier': asset['assetID']}
             else:
