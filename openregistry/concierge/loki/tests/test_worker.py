@@ -239,6 +239,8 @@ def test_process_lots(bot, logger, mocker):
     bot.assets_client.get_asset = mock_get_asset
 
     mock_log_broken_lot = mocker.patch('openregistry.concierge.loki.processing.log_broken_lot', autospec=True)
+    mock_patch_related_processes = mocker.patch.object(bot, '_patch_lot_asset_related_processes', autospec=True)
+    mock_patch_related_processes.return_value = (True, ['all_rPs'])
 
     mock_check_lot = mocker.patch.object(bot, 'check_lot', autospec=True)
     mock_patch_auction = mocker.patch.object(bot, '_patch_auction', autospec=True)
@@ -401,7 +403,8 @@ def test_process_lots(bot, logger, mocker):
     mock_patch_lot.side_effect = None
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[6] == "Assets {} from Lot {} will be patched to '{}'".format(verification_lot['assets'], verification_lot['id'], 'pending')
+    lot_assets = [rP['relatedProcessID'] for rP in verification_lot['relatedProcesses'] if rP['type'] == 'asset']
+    assert log_strings[6] == "Assets {} from Lot {} will be patched to '{}'".format(lot_assets, verification_lot['id'], 'pending')
 
 
     # status == 'pending.dissolution'
@@ -416,9 +419,10 @@ def test_process_lots(bot, logger, mocker):
     ])
     bot.process_lots(pending_dissolution_lot)  # assets_available: None; patch_assets: (True, []); check_lot: True
 
+    lot_assets = [rP['relatedProcessID'] for rP in pending_dissolution_lot['relatedProcesses'] if rP['type'] == 'asset']
     log_strings = logger.log_capture_string.getvalue().split('\n')
     assert log_strings[7] == 'Processing Lot b844573afaa24e4fb098f3027e605c87 in status pending.dissolution'
-    assert log_strings[8] == "Assets {} from Lot {} will be patched to 'pending'".format(pending_dissolution_lot['assets'],
+    assert log_strings[8] == "Assets {} from Lot {} will be patched to 'pending'".format(lot_assets,
                                                                                          pending_dissolution_lot['id'])
 
     assert mock_patch_lot.call_count == 5
@@ -463,7 +467,8 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_dissolution_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[11] == 'Not valid assets {} in Lot {}'.format(pending_dissolution_lot['assets'], pending_dissolution_lot['id'])
+    lot_assets = [rP['relatedProcessID'] for rP in pending_dissolution_lot['relatedProcesses'] if rP['type'] == 'asset']
+    assert log_strings[11] == 'Not valid assets {} in Lot {}'.format(lot_assets, pending_dissolution_lot['id'])
     assert mock_check_lot.call_count == 8
     assert mock_check_lot.call_args[0] == (pending_dissolution_lot,)
 
@@ -491,8 +496,9 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_sold_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
+    lot_assets = [rP['relatedProcessID'] for rP in pending_sold_lot['relatedProcesses'] if rP['type'] == 'asset']
     assert log_strings[12] == 'Processing Lot {} in status pending.sold'.format(pending_sold_lot['id'])
-    assert log_strings[13] == "Assets {} from Lot {} will be patched to 'complete'".format(pending_sold_lot['assets'],
+    assert log_strings[13] == "Assets {} from Lot {} will be patched to 'complete'".format(lot_assets,
                                                                                            pending_sold_lot['id'])
     assert mock_check_lot.call_count == 9
     assert mock_check_lot.call_args[0] == (pending_sold_lot,)
@@ -519,8 +525,9 @@ def test_process_lots(bot, logger, mocker):
     bot.process_lots(pending_sold_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
+    lot_assets = [rP['relatedProcessID'] for rP in pending_sold_lot['relatedProcesses'] if rP['type'] == 'asset']
     assert log_strings[14] == 'Processing Lot {} in status pending.sold'.format(pending_sold_lot['id'])
-    assert log_strings[15] == 'Not valid assets {} in Lot {}'.format(pending_sold_lot['assets'], pending_sold_lot['id'])
+    assert log_strings[15] == 'Not valid assets {} in Lot {}'.format(lot_assets, pending_sold_lot['id'])
     assert mock_check_lot.call_count == 10
     assert mock_check_lot.call_args[0] == (pending_sold_lot,)
 
@@ -780,6 +787,9 @@ def test_process_lots_broken(bot, logger, mocker):
     mock_check_assets = mocker.patch.object(bot, 'check_assets', autospec=True)
     mock_check_assets.return_value = True
 
+    mock_patch_related_processes = mocker.patch.object(bot, '_patch_lot_asset_related_processes', autospec=True)
+    mock_patch_related_processes.return_value = (True, ['all_assets'])
+
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
     mock_patch_assets.side_effect = iter([
         (False, ['successfully_patched_assets']), (False, []),
@@ -802,7 +812,7 @@ def test_process_lots_broken(bot, logger, mocker):
     bot.assets_client.get_asset = mock_get_asset
 
 
-    lot = lots[0]['data']
+    lot = deepcopy(lots[0]['data'])
 
     # failed on patching assets to verification
     bot.process_lots(lot)  # patch_assets: [False, False]
@@ -865,9 +875,20 @@ def test_check_assets(bot, logger, mocker):
         lots = load(lots)
 
     verification_lot = deepcopy(lots[0]['data'])
-    verification_lot['assets'] = ['e519404fd0b94305b3b19ec60add05e7']
+    verification_lot['relatedProcesses'] = [
+        {
+            'relatedProcessID': 'e519404fd0b94305b3b19ec60add05e7',
+            'type': 'asset',
+
+        }
+    ]
     dissolved_lot = deepcopy(lots[1]['data'])
-    dissolved_lot['assets'] = ["0a7eba27b22a454180d3a49b02a1842f"]
+    dissolved_lot['relatedProcesses'] = [
+        {
+            'relatedProcessID': '0a7eba27b22a454180d3a49b02a1842f',
+            'type': 'asset',
+        }
+    ]
 
     mock_get_asset = mocker.MagicMock()
     mock_get_asset.side_effect = [
@@ -907,11 +928,21 @@ def test_check_assets(bot, logger, mocker):
         munchify(bounce_asset)
     ]
 
-    loki_verification_lot['assets'] = [basic_asset['data']['id']]
+    loki_verification_lot['relatedProcesses'] = [
+        {
+            'relatedProcessID': basic_asset['data']['id'],
+            'type': 'asset',
+        }
+    ]
     result = bot.check_assets(loki_verification_lot)
     assert result is False
 
-    loki_verification_lot['assets'] = [bounce_asset['data']['id']]
+    loki_verification_lot['relatedProcesses'] = [
+        {
+            'relatedProcessID': bounce_asset['data']['id'],
+            'type': 'asset',
+        }
+    ]
     result = bot.check_assets(loki_verification_lot)
     assert result is True
 
