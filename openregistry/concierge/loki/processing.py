@@ -208,7 +208,7 @@ class ProcessingLoki(object):
             subitem_name='related-processes',
             subitem_id=related_process_id
         )
-        logger.info("Successfully patched Lot.auction {} from Lot {})".format(related_process_id, lot_id))
+        logger.info("Successfully patched Lot.relatedProcess {} from Lot {})".format(related_process_id, lot_id))
         return auction
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)

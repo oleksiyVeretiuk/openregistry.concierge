@@ -1688,7 +1688,7 @@ def test_patch_related_process(bot, logger, mocker):
     )
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[0] == "Successfully patched Lot.auction {} from Lot {})".format(related_process_id, lot['id'])
+    assert log_strings[0] == "Successfully patched Lot.relatedProcess {} from Lot {})".format(related_process_id, lot['id'])
 
     # Test when post is failed
     mocked_patch_subitem.side_effect = iter([
