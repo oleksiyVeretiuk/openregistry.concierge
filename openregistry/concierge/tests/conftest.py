@@ -16,6 +16,9 @@ TEST_CONFIG = {
         "password": "",
         "filter": "lots/status"
     },
+    'lots_mapping': {
+      'enable': True
+    },
     "errors_doc": "broken_lots",
     "time_to_sleep": 0.0002,
     "lots": {
