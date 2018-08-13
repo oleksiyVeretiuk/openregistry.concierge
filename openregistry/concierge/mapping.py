@@ -12,6 +12,7 @@ class LotMapping(object):
     def __init__(self, config, logger):
         self.logger = logger
         self.config = config
+        self.enable = self.config.get('enable', False)
         if 'host' in self.config:
             self.type = 'redis'
             config = {
@@ -35,18 +36,34 @@ class LotMapping(object):
             self._has_value = self.db.has
 
     def get(self, key):
+        if not self.enable:
+            self.logger.warning('Caching is disabled, when `get` method is called. Returned None by default')
+            return None
+
         key = str(key)
         return self.db.get(key)
 
     def put(self, key, value, **kwargs):
+        if not self.enable:
+            self.logger.warning('Caching is disabled, when `put` method is called. Returned None by default')
+            return None
+
         key = str(key)
         self._set_value(key, value, **kwargs)
 
     def has(self, key):
+        if not self.enable:
+            self.logger.warning('Caching is disabled, when `has` method is called. Returned True by default')
+            return True
+
         key = str(key)
         return self._has_value(key)
 
     def delete(self, key):
+        if not self.enable:
+            self.logger.warning('Caching is disabled, when `delete` method is called. Returned None by default')
+            return None
+
         key = str(key)
         return self.db.delete(key)
 
