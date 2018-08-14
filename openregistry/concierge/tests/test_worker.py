@@ -61,7 +61,7 @@ def test_get_lot(bot, logger, mocker):
 
 
 def test_run(bot, logger, mocker, almost_always_true):
-    if not bot.lots_mapping.db.is_empty():
+    if not bot.lots_mapping.db.db.is_empty():
         Db('lots_mapping').destroy('lots_mapping')
 
     with open(ROOT + 'lots.json') as lots:
