@@ -77,3 +77,5 @@ DEFAULTS = {
 
 
 TZ = timezone(os.environ['TZ'] if 'TZ' in os.environ else 'Europe/Kiev')
+
+AUCTION_CREATE_MESSAGE_ID = 'create_auction'
