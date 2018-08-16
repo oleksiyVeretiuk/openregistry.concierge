@@ -124,8 +124,7 @@ def log_broken_lot(db, logger, doc, lot, message):
 
 def resolve_broken_lot(db, logger, doc, lot):
     try:
-        doc[lot['id']]['resolved'] = True
-        doc[lot['id']]['rev'] = lot['rev']
+        del doc[lot['id']]
         db.save(doc)
     except error as e:
         logger.error('Database error: {}'.format(e.message))
