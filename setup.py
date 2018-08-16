@@ -16,7 +16,8 @@ requires = [
     'dpath',
     'pytz',
     'isodate',
-    'redis'
+    'redis',
+    'statsdhandler'
 ]
 
 test_require = {
