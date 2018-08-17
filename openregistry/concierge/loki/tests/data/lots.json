@@ -29,8 +29,12 @@
          },
          "owner":"broker",
          "dateModified":"2017-08-29T12:52:55.241292+03:00",
-         "assets":[
-            "e519404fd0b94305b3b19ec60add05e7"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "e519404fd0b94305b3b19ec60add05e7",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ],
          "decisions": [
             {
@@ -70,8 +74,12 @@
          },
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
-         "assets":[
-            "8034c43e2d764006ad6e655e339e5fec"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "8034c43e2d764006ad6e655e339e5fec",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ],
          "decisions": [
             {
@@ -111,8 +119,12 @@
          },
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
-         "assets":[
-            "517636b214b84c9d945c61b2299d74a4"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "517636b214b84c9d945c61b2299d74a4",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ],
          "decisions": [
             {
@@ -152,8 +164,12 @@
          },
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
-         "assets":[
-            "e671161adb8c4c9b9153fd6072c52ef9"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "e671161adb8c4c9b9153fd6072c52ef9",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ],
          "decisions": [
             {
@@ -193,8 +209,12 @@
          },
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
-         "assets":[
-            "ec97a0dde0294762bbfd938602d7d94c"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "ec97a0dde0294762bbfd938602d7d94c",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ],
          "decisions": [
             {
@@ -240,8 +260,12 @@
          ],
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
-         "assets":[
-            "efde5be10ffa4879b8873d5a6b9e0c42"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "efde5be10ffa4879b8873d5a6b9e0c42",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ]
       }
    },
@@ -281,8 +305,12 @@
          ],
          "owner":"broker",
          "dateModified":"2017-08-29T13:05:00.158015+03:00",
-         "assets":[
-            "27516136f65b4fef8fa60746b28c7a14"
+         "relatedProcesses":[
+            {
+               "relatedProcessID": "27516136f65b4fef8fa60746b28c7a14",
+               "type": "asset",
+               "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+            }
          ]
       }
    },
@@ -404,8 +432,12 @@
       ],
       "owner":"broker",
       "dateModified":"2017-08-29T13:05:00.158015+03:00",
-      "assets":[
-         "27516136f65b4fef8fa60746b28c7a14"
+      "relatedProcesses":[
+         {
+            "relatedProcessID": "27516136f65b4fef8fa60746b28c7a14",
+            "type": "asset",
+            "id": "c1c77e1ea84b47bb99b86cbde6b04cd8"
+         }
       ]
    }
 }
