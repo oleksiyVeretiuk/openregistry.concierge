@@ -28,7 +28,7 @@ from openregistry.concierge.constants import (
     DEFAULTS,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('openregistry.concierge.worker')
 
 EXCEPTIONS = (Forbidden, RequestFailed, ResourceNotFound, UnprocessableEntity, PreconditionFailed, Conflict)
 
@@ -137,6 +137,8 @@ class BotWorker(object):
 
             if self.killer.kill_now:
                 break
+
+            logger.info('Count of broken lots {}'.format(len(self.errors_doc) - 2))
             time.sleep(self.sleep)
 
     def get_lot(self):
@@ -168,6 +170,7 @@ def main():
             config = yaml.load(config_object.read())
         logging.config.dictConfig(config)
     DEFAULTS.update(config)
+
     worker = BotWorker(DEFAULTS)
     if params.lot_id:
         worker.process_single_lot(params.lot_id)

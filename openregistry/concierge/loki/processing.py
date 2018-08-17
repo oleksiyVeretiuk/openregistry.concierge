@@ -27,11 +27,11 @@ from openregistry.concierge.utils import (
     retry_on_error,
     create_filter_condition
 )
-from openregistry.concierge.constants import TZ
 from openregistry.concierge.loki.utils import (
     calculate_business_date,
     log_assets_message
 )
+from openregistry.concierge.constants import TZ, AUCTION_CREATE_MESSAGE_ID
 from openregistry.concierge.loki.constants import (
     KEYS_FOR_LOKI_PATCH,
     NEXT_STATUS_CHANGE,
@@ -186,7 +186,10 @@ class ProcessingLoki(object):
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _post_auction(self, data, lot_id):
         auction = self.auction_client.create_auction(data)
-        logger.info("Successfully created auction {} from Lot {})".format(auction['data']['id'], lot_id))
+        logger.info(
+            "Successfully created auction {} from Lot {})".format(auction['data']['id'], lot_id),
+            extra={'MESSAGE_ID': AUCTION_CREATE_MESSAGE_ID}
+        )
         return auction
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
@@ -205,7 +208,7 @@ class ProcessingLoki(object):
         auction = self.lots_client.patch_resource_item_subitem(
             resource_item_id=lot_id,
             patch_data={'data': data},
-            subitem_name='related-processes',
+            subitem_name='related_processes',
             subitem_id=related_process_id
         )
         logger.info("Successfully patched Lot.relatedProcess {} from Lot {})".format(related_process_id, lot_id))
