@@ -90,7 +90,7 @@ def test_run(bot, logger, mocker, almost_always_true):
     bot.run()
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
-    assert log_strings[1] == "Starting worker"
+    assert log_strings[4] == "Starting worker"
 
     assert mock_get_lot.call_count == 6
     assert mock_process_lot.call_count == 5

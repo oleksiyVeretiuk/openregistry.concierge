@@ -15,7 +15,7 @@ from openprocurement_client.exceptions import (
     PreconditionFailed,
 )
 
-from openregistry.concierge.design import sync_design
+from openregistry.concierge.watchers import LastSeqNumber
 from openregistry.concierge.mapping import prepare_lot_mapping
 
 CONTINUOUS_CHANGES_FEED_FLAG = True
@@ -37,6 +37,8 @@ def check(self, msg, exc=None, *args, **kwargs):
 
 
 Logger.check = check
+
+last_seq = LastSeqNumber()
 
 
 class ConfigError(Exception):
@@ -60,7 +62,6 @@ def prepare_couchdb(couch_url, db_name, logger, errors_doc, couchdb_filter):
     except error as e:
         logger.error('Database error: {}'.format(e.message))
         raise ConfigError(e.strerror)
-    sync_design(db)
     return db
 
 
@@ -81,14 +82,19 @@ def prepare_couchdb_filter(db, doc, filter_name, filter, logger):
 
 def continuous_changes_feed(db, logger, limit=100, filter_doc='lots/status'):
 
-    last_seq_id = 0
+    last_seq.drop(logger)
+
     while CONTINUOUS_CHANGES_FEED_FLAG:
         try:
-            data = db.changes(include_docs=True, since=last_seq_id, limit=limit, filter=filter_doc)
+            data = db.changes(include_docs=True, since=last_seq.get(), limit=limit, filter=filter_doc)
         except error as e:
             logger.error('Failed to get lots from DB: [Errno {}] {}'.format(e.errno, e.strerror))
             break
-        last_seq_id = data['last_seq']
+
+        last_seq.set(data['last_seq'])
+
+        logger.info('{} document got from CouchDB'.format(len(data['results'])))
+
         if len(data['results']) != 0:
             for row in data['results']:
                 item = row['doc']
@@ -116,8 +122,7 @@ def log_broken_lot(db, logger, doc, lot, message):
 
 def resolve_broken_lot(db, logger, doc, lot):
     try:
-        doc[lot['id']]['resolved'] = True
-        doc[lot['id']]['rev'] = lot['rev']
+        del doc[lot['id']]
         db.save(doc)
     except error as e:
         logger.error('Database error: {}'.format(e.message))
