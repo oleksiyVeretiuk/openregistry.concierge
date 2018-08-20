@@ -72,11 +72,13 @@ class TestVoidDB(unittest.TestCase):
 
         self.assertEqual(mapping.get('some_wrong_id'), None)
 
-        self.assertEqual(mapping.set_value('some_wrong_id', 'some_value'), None)
+        self.assertEqual(mapping.put('some_wrong_id', 'some_value'), None)
 
-        self.assertEqual(mapping.has('some_wrong_id'), True)
+        self.assertEqual(mapping.has('some_wrong_id'), False)
 
         self.assertEqual(mapping.delete('some_wrong_id'), None)
+
+        self.assertEqual(mapping.is_empty(), True)
 
 
 def suite():

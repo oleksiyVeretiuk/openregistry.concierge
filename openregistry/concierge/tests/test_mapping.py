@@ -4,8 +4,8 @@ import mock
 
 from lazydb import Db as LazyDB
 
-from openregistry.concierge.mapping import LotMapping
-from openregistry.concierge.mapping_types import MappingConfigurationException
+from openregistry.concierge.mapping import prepare_lot_mapping
+from openregistry.concierge.mapping_types import MappingConfigurationException, MAPPING_TYPES
 
 
 class TestMappingSuite(unittest.TestCase):
@@ -19,30 +19,17 @@ class TestMappingSuite(unittest.TestCase):
         mocked_logger = mock.MagicMock()
 
         with self.assertRaises(MappingConfigurationException) as exc:
-            LotMapping(config, mocked_logger)
+            prepare_lot_mapping(config, mocked_logger)
             self.assertEqual(exc.message, 'Only `void`, `redis` and `lazy` types are available')
             self.assertIs(exc, MappingConfigurationException)
 
     def test_lots_mapping_succeed_init(self):
         config = {'type': 'void'}
-        mocked_db = mock.MagicMock()
 
         mocked_logger = mock.MagicMock()
 
-        mapping = LotMapping(config, mocked_logger)
-        mapping.db = mocked_db
-
-        mapping.get('test')
-        mocked_db.get.assert_called_with('test')
-
-        mapping.put('test', 'value')
-        mocked_db.set_value.assert_called_with('test', 'value')
-
-        mapping.has('test')
-        mocked_db.has.assert_called_with('test')
-
-        mapping.delete('test')
-        mocked_db.delete.assert_called_with('test')
+        mapping = prepare_lot_mapping(config, mocked_logger)
+        self.assertIsInstance(mapping, MAPPING_TYPES[config['type']])
 
 
 def suite():
