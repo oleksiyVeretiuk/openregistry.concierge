@@ -8,17 +8,24 @@ class MappingConfigurationException(Exception):
 
 
 class MappingInterface(object):
+    type = None
 
     def get(self, key):
         raise NotImplementedError
 
-    def set_value(self, key, value):
+    def put_value(self, key, value):
         raise NotImplementedError
 
     def has(self, key):
         raise NotImplementedError
 
     def delete(self, key):
+        raise NotImplementedError
+
+    def is_empty(self):
+        raise NotImplementedError
+
+    def clean(self):
         raise NotImplementedError
 
 
@@ -28,16 +35,16 @@ class LazyDBMapping(MappingInterface):
         self.logger = logger
         self.config = config
         self.type = 'lazy'
-        db = self.config.get('name', 'lots_mapping')
-        self.db = LazyDB(db)
-        self.logger.info('Set lazydb "{}" as lots mapping'.format(db))
+        self.name = self.config.get('name', 'lots_mapping')
+        self.db = LazyDB(self.name)
+        self.logger.info('Set lazydb "{}" as lots mapping'.format(self.name))
         self._set_value = self.db.put
         self._has_value = self.db.has
 
     def get(self, key):
         return self.db.get(key)
 
-    def set_value(self, key, value):
+    def put(self, key, value):
         self.db.put(key, value)
 
     def has(self, key):
@@ -45,6 +52,12 @@ class LazyDBMapping(MappingInterface):
 
     def delete(self, key):
         self.db.delete(key)
+
+    def is_empty(self):
+        return self.db.is_empty()
+
+    def clean(self):
+        LazyDB.destroy(self.name)
 
 
 class RedisMapping(MappingInterface):
@@ -78,7 +91,7 @@ class RedisMapping(MappingInterface):
     def get(self, key):
         return self.db.get(key)
 
-    def set_value(self, key, value):
+    def put(self, key, value):
         self.db.set(key, value, ex=self.expire_time)
 
     def has(self, key):
@@ -86,6 +99,14 @@ class RedisMapping(MappingInterface):
 
     def delete(self, key):
         self.db.delete(key)
+
+    def is_empty(self):
+        for _ in self.db.scan_iter(count=1):
+            return True
+        return False
+
+    def clean(self):
+        self.db.flushdb()
 
     def validate_config(self, config):
         if 'host' not in config:
@@ -97,20 +118,26 @@ class RedisMapping(MappingInterface):
 class VoidMapping(MappingInterface):
     def __init__(self, config, logger):
         self.logger = logger
+        self.type = 'void'
         self.logger.info('Set void mapping. Caching is disabled')
 
     def get(self, key):
         return None
 
-    def set_value(self, key, value):
+    def put(self, key, value):
         return None
 
     def has(self, key):
-        return True
+        return False
 
     def delete(self, key):
         return None
 
+    def is_empty(self):
+        return True
+
+    def clean(self):
+        pass
 
 MAPPING_TYPES = {
     'redis': RedisMapping,
