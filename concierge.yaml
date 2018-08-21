@@ -10,6 +10,9 @@ db:
 errors_doc: "broken_lots"
 time_to_sleep: 10
 
+lots_mapping:
+  type: void
+
 lots:
   api:
     url: "http://0.0.0.0:6543"

@@ -1,73 +1,26 @@
 # -*- coding: utf-8 -*-
-from functools import partial
-
-from redis import StrictRedis
-from lazydb import Db as LazyDB
-
-
-class LotMapping(object):
-    """Mapping for processed auctions"""
-    type = ''
-
-    def __init__(self, config, logger):
-        self.logger = logger
-        self.config = config
-        if 'host' in self.config:
-            self.type = 'redis'
-            config = {
-                'host': self.config.get('host'),
-                'port': self.config.get('port') or 6379,
-                'db': self.config.get('name') or 0,
-                'password': self.config.get('password') or None
-            }
-            self.db = StrictRedis(**config)
-            self.logger.info('Set redis store "{db}" at {host}:{port} '
-                        'as lots mapping'.format(**config))
-            set = partial(self.db.set, ex=30)
-            self._set_value = set
-            self._has_value = self.db.exists
-        else:
-            self.type = 'lazy'
-            db = self.config.get('name', 'lots_mapping')
-            self.db = LazyDB(db)
-            self.logger.info('Set lazydb "{}" as lots mapping'.format(db))
-            self._set_value = self.db.put
-            self._has_value = self.db.has
-
-    def get(self, key):
-        key = str(key)
-        return self.db.get(key)
-
-    def put(self, key, value, **kwargs):
-        key = str(key)
-        self._set_value(key, value, **kwargs)
-
-    def has(self, key):
-        key = str(key)
-        return self._has_value(key)
-
-    def delete(self, key):
-        key = str(key)
-        return self.db.delete(key)
+from openregistry.concierge.mapping_types import (
+    MAPPING_TYPES,
+    MappingConfigurationException
+)
 
 
 def prepare_lot_mapping(config, logger, check=False):
     """
-    Initialization of auctions_mapping, which are used for tracking auctions,
-    which already were processed by convoy.
-    :param config: configuration for auctions_mapping
+    Initialization of lots_mapping, which are used for tracking lots,
+    which already were processed by concierge.
+    :param config: configuration for lots_mapping
     :type config: dict
     :param check: run doctest if set to True
     :type check: bool
-    :return: auctions_mapping instance
-    :rtype: AuctionsMapping
+    :return: lots_mapping instance
+    :rtype: LotsMapping
     """
+    mapping_class = MAPPING_TYPES.get(config.get('type', 'void'), None)
 
-    db = LotMapping(config, logger)
-    if check:
-        db.put('test', '1')
-        assert db.has('test') is True
-        assert db.get('test') == '1'
-        db.delete('test')
-        assert db.has('test') is False
+    if mapping_class is None:
+        raise MappingConfigurationException('Only `void`, `redis` and `lazy` types are available')
+
+    db = mapping_class(config, logger)
+
     return db
