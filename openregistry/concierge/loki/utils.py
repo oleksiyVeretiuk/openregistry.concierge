@@ -134,9 +134,3 @@ def calculate_business_date(start, delta, context, working_days=False, specific_
             time_cursor = get_closest_working_day(time_cursor, backward=reverse_calculations)
 
     return time_cursor
-
-
-def log_assets_message(logger, level, msg, related_processes):
-    assets = [rP['relatedProcessID'] for rP in related_processes]
-    logger_method = getattr(logger, level, logger.info)
-    logger_method(msg.format(assets=assets))
