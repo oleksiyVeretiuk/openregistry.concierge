@@ -118,9 +118,9 @@ class ProcessingLoki(object):
         """
         lot_available = self.check_lot(lot)
         if not lot_available:
-            logger.info("Skipping Lot {}".format(lot['id']))
+            logger.info("Skipping Lot {}".format(lot['id']), extra={'MESSAGE_ID': 'skip_lot'})
             return
-        logger.info("Processing Lot {} in status {}".format(lot['id'], lot['status']))
+        logger.info("Processing Lot {} in status {}".format(lot['id'], lot['status']), extra={'MESSAGE_ID': 'process_loki_lot'})
         if lot['status'] in ['verification']:
             try:
                 assets_available = self.check_assets(lot)
@@ -272,7 +272,7 @@ class ProcessingLoki(object):
             return auction, auction_from_lot['id']
         except EXCEPTIONS as e:
             message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
-            logger.error("Failed to create auction from Lot {} ({})".format(lot['id'], message))
+            logger.error("Failed to create auction from Lot {} ({})".format(lot['id'], message), extra={'MESSAGE_ID': 'failed_to_create_auction'})
             return False
 
     def _add_assets_to_lot(self, lot):

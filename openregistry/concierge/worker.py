@@ -149,7 +149,7 @@ class BotWorker(object):
         Returns:
             generator: Generator object with the received lots.
         """
-        logger.info('Getting Lots')
+        logger.info('Getting Lots', extra={'MESSAGE_ID': 'getting_lots'})
         return continuous_changes_feed(
             self.db, logger,
             filter_doc=self.config['db']['filter']
