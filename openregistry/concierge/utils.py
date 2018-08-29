@@ -15,7 +15,6 @@ from openprocurement_client.exceptions import (
     PreconditionFailed,
 )
 
-from openregistry.concierge.design import sync_design
 from openregistry.concierge.watchers import LastSeqNumber
 from openregistry.concierge.mapping import prepare_lot_mapping
 
@@ -63,7 +62,6 @@ def prepare_couchdb(couch_url, db_name, logger, errors_doc, couchdb_filter):
     except error as e:
         logger.error('Database error: {}'.format(e.message))
         raise ConfigError(e.strerror)
-    sync_design(db)
     return db
 
 
