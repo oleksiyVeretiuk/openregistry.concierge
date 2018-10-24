@@ -205,14 +205,68 @@ class ProcessingLoki(object):
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _patch_related_process(self, data, lot_id, related_process_id):
-        auction = self.lots_client.patch_resource_item_subitem(
+        related_process = self.lots_client.patch_resource_item_subitem(
             resource_item_id=lot_id,
             patch_data={'data': data},
-            subitem_name='related-processes',
+            subitem_name='related_processes',
             subitem_id=related_process_id
         )
         logger.info("Successfully patched Lot.relatedProcess {} from Lot {})".format(related_process_id, lot_id))
-        return auction
+        return related_process
+
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
+    def _create_asset_related_process(self, asset_id, data):
+        related_process = self.assets_client.create_resource_item_subitem(
+            resource_item_id=asset_id,
+            subitem_obj={'data': data},
+            subitem_name='related_processes',
+        )
+        logger.info("Successfully post Asset.relatedProcess from Asset {})".format(asset_id))
+        return related_process
+
+    @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
+    def _remove_asset_lot_related_process(self, asset_id, related_process_id):
+        related_process = self.assets_client.delete_resource_item_subitem(
+            resource_item_id=asset_id,
+            subitem_name='related_processes',
+            subitem_id=related_process_id
+        )
+        logger.info("Successfully remove Asset.relatedProcess from Asset {})".format(asset_id))
+        return related_process
+
+    def add_related_process_to_assets(self, lot):
+        related_process_type_asset = [rP for rP in lot['relatedProcesses'] if rP['type'] == 'asset']
+        patched_rPs = []
+        is_all_patched = True
+        lot_related_process_data = self.make_lot_related_process(lot)
+        for rP in related_process_type_asset:
+            try:
+                created_rP = self._create_asset_related_process(rP['relatedProcessID'], lot_related_process_data)
+                created_rP['asset_parent'] = rP['relatedProcessID']
+            except EXCEPTIONS as e:
+                is_all_patched = False
+                message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
+                logger.error(
+                    "Failed to add relatedProcess of lot {} in Asset {} ({})".format(
+                        lot['id'],
+                        rP['relatedProcessID'],
+                        message
+                    )
+                )
+            else:
+                patched_rPs.append(created_rP)
+        return is_all_patched, patched_rPs
+
+    def clean_asset_related_processes(self, lot, assets_rPs):
+        is_all_patched = True
+        for rP in assets_rPs:
+            try:
+                self._remove_asset_lot_related_process(rP['asset_parent'], rP['id'])
+            except EXCEPTIONS as e:
+                is_all_patched = False
+                message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
+                logger.error("Failed to clean relatedProcess {} in Asset {} ({})".format(rP['id'], lot['id'], message))
+        return is_all_patched
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
     def _extract_transfer_token(self, lot_id):
@@ -293,7 +347,6 @@ class ProcessingLoki(object):
         result, patched_assets = self.patch_assets(
             lot,
             get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre'),
-            lot['id']
         )
 
         if result is False:
@@ -312,7 +365,6 @@ class ProcessingLoki(object):
             result, _ = self.patch_assets(
                 lot,
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish'),
-                lot['id']
             )
             if result is False:
                 log_assets_message(logger, 'info', "Assets {assets} will be repatched to 'pending'", lot['relatedProcesses'])
@@ -322,6 +374,7 @@ class ProcessingLoki(object):
                 return False
             else:
                 result, patched_rPs = self._patch_lot_asset_related_processes(lot)
+
                 if not result and patched_rPs:
                     lot_with_patched_rPs = {
                         'id': lot['id'],
@@ -331,6 +384,17 @@ class ProcessingLoki(object):
                     self.patch_assets(lot, 'pending')
                     return False
                 elif not result:
+                    self.patch_assets(lot, 'pending')
+                    return False
+
+                result, patched_rPs = self.add_related_process_to_assets(lot)
+                if not result and patched_rPs:
+                    self.clean_asset_related_processes(lot, patched_rPs)
+                    self._patch_lot_asset_related_processes(lot, cleanup=True)
+                    self.patch_assets(lot, 'pending')
+                    return False
+                elif not result:
+                    self._patch_lot_asset_related_processes(lot, cleanup=True)
                     self.patch_assets(lot, 'pending')
                     return False
 
@@ -457,12 +521,25 @@ class ProcessingLoki(object):
                 return False
             if asset.get('mode') != lot.get('mode'):
                 return False
-            related_lot_check = 'relatedLot' in asset and asset.relatedLot != lot['id']
+            related_lot = self.get_asset_related_lot(asset)
+            related_lot_check = related_lot and related_lot.relatedProcessID != lot['id']
             if related_lot_check or asset.status != status:
                 return False
         return True
 
-    def patch_assets(self, lot, status, related_lot=None):
+    def get_asset_related_lot(self, asset):
+        for rP in asset.get('relatedProcesses', []):
+            if rP.type == 'lot':
+                return rP
+
+    def make_lot_related_process(self, lot):
+        return {
+            'type': 'lot',
+            'relatedProcessID': lot['id'],
+            'identifier': lot['lotID']
+        }
+
+    def patch_assets(self, lot, status):
         """
         Makes PATCH request to openregistry for every asset id in assets list
         from lot object, passed as parameter, with client specified in
@@ -486,7 +563,7 @@ class ProcessingLoki(object):
         """
         patched_assets = []
         is_all_patched = True
-        patch_data = {"status": status, "relatedLot": related_lot}
+        patch_data = {"status": status}
         assets = [rP['relatedProcessID'] for rP in lot['relatedProcesses'] if rP['type'] == 'asset']
         for asset_id in assets:
             try:
