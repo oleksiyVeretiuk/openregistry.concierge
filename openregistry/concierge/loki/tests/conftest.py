@@ -3,51 +3,16 @@ import couchdb
 import logging
 import pytest
 
+from copy import deepcopy
 from StringIO import StringIO
 
+from openregistry.concierge.tests.conftest import TEST_CONFIG as BASE_TEST_CONFIG
 from openregistry.concierge.loki.processing import ProcessingLoki, logger as LOGGER
 
-TEST_CONFIG = {
-    "db": {
-        "host": "127.0.0.1",
-        "name": "lots_db",
-        "port": "5984",
-        "login": "",
-        "password": "",
-        "filter": "lots/status"
-    },
-    "errors_doc": "broken_lots",
-    "time_to_sleep": 0.0002,
-    "lots": {
-        "api": {
-            "url": "http://192.168.50.9",
-            "token": "concierge",
-            "version": 0
-        },
-        "basic": {
-            'aliases': ["basic"],
-            'assets': {
-                "basic": ["basic"],
-                "compound": ["compound"],
-                "claimRights": ["claimRights"]
-            }
-        },
-        "loki": {
-            'planned_pmt': ['sellout.english', 'sellout.insider'],
-            'aliases': ["loki"],
-            'assets': {
-                "bounce": ["bounce", "domain"]
-            }
-        }
-    },
-    "assets": {
-        "api": {
-            "url": "http://192.168.50.9",
-            "token": "concierge",
-            "version": 0
-        }
-    }
-}
+
+TEST_CONFIG = deepcopy(BASE_TEST_CONFIG)
+TEST_CONFIG.pop('lots_mapping')
+TEST_CONFIG['lots']['loki']['planned_pmt'] = ['sellout.english', 'sellout.insider']
 
 
 @pytest.fixture(scope='function')

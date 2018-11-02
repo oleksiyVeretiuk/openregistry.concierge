@@ -24,7 +24,7 @@ TEST_CONFIG = {
         "filter": "lots/status"
     },
     'lots_mapping': {
-      'type': 'lazy'
+        'type': 'lazy'
     },
     "errors_doc": "broken_lots",
     "time_to_sleep": 0.0002,
