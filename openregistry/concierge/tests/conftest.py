@@ -1,23 +1,30 @@
 # -*- coding: utf-8 -*-
 import couchdb
 import logging
+import os
 import pytest
+import uuid
 
 from StringIO import StringIO
 
 from openregistry.concierge.worker import BotWorker, logger as LOGGER
 
+
+DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
+DB_PORT = os.environ.get('DB_PORT', '5984')
+DB_USER = os.environ.get('DB_USER', '')
+DB_PASS = os.environ.get('DB_PASS', '')
 TEST_CONFIG = {
     "db": {
-        "host": "127.0.0.1",
-        "name": "lots_db",
-        "port": "5984",
-        "login": "",
-        "password": "",
+        "host": DB_HOST,
+        "name": "lots_db_{}".format(uuid.uuid4().hex),
+        "port": DB_PORT,
+        "login": DB_USER,
+        "password": DB_PASS,
         "filter": "lots/status"
     },
     'lots_mapping': {
-      'type': 'lazy'
+        'type': 'lazy'
     },
     "errors_doc": "broken_lots",
     "time_to_sleep": 0.0002,
