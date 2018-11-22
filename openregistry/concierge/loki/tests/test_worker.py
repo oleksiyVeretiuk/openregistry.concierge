@@ -1683,7 +1683,7 @@ def test_patch_related_process(bot, logger, mocker):
     mocked_patch_subitem.assert_called_with(
         resource_item_id=lot['id'],
         patch_data={'data': patched_data},
-        subitem_name='related-processes',
+        subitem_name='related_processes',
         subitem_id=related_process_id
     )
 
@@ -1709,6 +1709,6 @@ def test_patch_related_process(bot, logger, mocker):
     mocked_patch_subitem.assert_called_with(
         resource_item_id=lot['id'],
         patch_data={'data': patched_data},
-        subitem_name='related-processes',
+        subitem_name='related_processes',
         subitem_id='1' * 32
     )
