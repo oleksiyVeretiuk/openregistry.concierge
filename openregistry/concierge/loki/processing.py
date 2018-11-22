@@ -208,7 +208,7 @@ class ProcessingLoki(object):
         auction = self.lots_client.patch_resource_item_subitem(
             resource_item_id=lot_id,
             patch_data={'data': data},
-            subitem_name='related-processes',
+            subitem_name='related_processes',
             subitem_id=related_process_id
         )
         logger.info("Successfully patched Lot.relatedProcess {} from Lot {})".format(related_process_id, lot_id))
