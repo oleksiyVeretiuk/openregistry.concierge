@@ -135,7 +135,7 @@ def init_clients(config, logger, couchdb_filter):
     clients_from_config = {
         'lots_client': {'section': 'lots', 'client_instance': LotsClient},
         'assets_client': {'section': 'assets', 'client_instance': AssetsClient},
-        'auction_client': {'section': 'assets', 'client_instance': AuctionsClient}
+        'auction_client': {'section': 'auctions', 'client_instance': AuctionsClient}
     }
     result = ''
     exceptions = []

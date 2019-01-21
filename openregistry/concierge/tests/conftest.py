@@ -55,6 +55,13 @@ TEST_CONFIG = {
             "token": "concierge",
             "version": 0
         }
+    },
+    "auctions": {
+        "api": {
+            "url": "http://192.168.50.9",
+            "token": "concierge",
+            "version": 0
+        }
     }
 }
 
