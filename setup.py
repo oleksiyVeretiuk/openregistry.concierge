@@ -6,7 +6,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.rst')) as f:
     README = f.read()
 
-version = '0.3.2'
+VERSION = '0.3.3'
 
 requires = [
     'pyyaml',
@@ -40,7 +40,7 @@ entry_points = {
 
 setup(
     name='openregistry.concierge',
-    version=version,
+    version=VERSION,
     description="openregistry.concierge",
     long_description=README,
     classifiers=[
