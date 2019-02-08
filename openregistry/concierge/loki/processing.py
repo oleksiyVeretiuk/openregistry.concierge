@@ -362,6 +362,16 @@ class ProcessingLoki(object):
                         'patching assets to {}'.format(get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre')))
             return False
         else:
+            result, patched_rPs = self.add_related_process_to_assets(lot)
+            if not result and patched_rPs:
+                self.clean_asset_related_processes(lot, patched_rPs)
+                self.patch_assets(lot, 'pending')
+                return False
+            elif not result:
+                self._patch_lot_asset_related_processes(lot, cleanup=True)
+                self.patch_assets(lot, 'pending')
+                return False
+
             result, _ = self.patch_assets(
                 lot,
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish'),
@@ -384,17 +394,6 @@ class ProcessingLoki(object):
                     self.patch_assets(lot, 'pending')
                     return False
                 elif not result:
-                    self.patch_assets(lot, 'pending')
-                    return False
-
-                result, patched_rPs = self.add_related_process_to_assets(lot)
-                if not result and patched_rPs:
-                    self.clean_asset_related_processes(lot, patched_rPs)
-                    self._patch_lot_asset_related_processes(lot, cleanup=True)
-                    self.patch_assets(lot, 'pending')
-                    return False
-                elif not result:
-                    self._patch_lot_asset_related_processes(lot, cleanup=True)
                     self.patch_assets(lot, 'pending')
                     return False
 

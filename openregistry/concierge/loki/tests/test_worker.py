@@ -952,6 +952,9 @@ def test_process_lots_broken(bot, logger, mocker):
 
     bot.assets_client.get_asset = mock_get_asset
 
+    bot.add_related_process_to_assets = mocker.MagicMock()
+    bot.add_related_process_to_assets.return_value = (True, [])
+    bot.clean_related_processes = mocker.MagicMock()
 
     lot = deepcopy(lots[0]['data'])
 
