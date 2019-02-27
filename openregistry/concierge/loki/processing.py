@@ -163,6 +163,20 @@ class ProcessingLoki(object):
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish')
             )
             if result:
+
+                if get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish') == 'pending':
+                    # Remove related processes with lot type from asset that switched in pending status
+                    asset = self.assets_client.get_asset(lot['relatedProcesses'][0]['relatedProcessID']).data
+                    related_processes = [
+                        rP for rP in asset.get('relatedProcesses', [])
+                        if rP['type'] == 'lot' and rP['relatedProcessID'] == lot['id']
+                    ]
+
+                    for rp in related_processes:
+                        rp['asset_parent'] = asset['id']
+
+                    self.clean_asset_related_processes(lot, related_processes)
+
                 self.lots_mapping.put(lot['id'], True)
 
     def get_next_auction(self, lot):
