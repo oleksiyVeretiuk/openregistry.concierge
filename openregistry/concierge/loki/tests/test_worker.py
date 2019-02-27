@@ -253,6 +253,8 @@ def test_process_lots(bot, logger, mocker):
 
     mock_patch_assets = mocker.patch.object(bot, 'patch_assets', autospec=True)
 
+    mock_patch_clean_related_process = mocker.patch.object(bot, 'clean_asset_related_processes', autospec=True)
+
     mock_patch_lot = mocker.patch.object(bot, 'patch_lot', autospec=True)
     mock_patch_lot.return_value = True
 
@@ -428,6 +430,10 @@ def test_process_lots(bot, logger, mocker):
     mock_patch_assets.side_effect = iter([
         (True, ['all_assets'])
     ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+
     bot.process_lots(pending_dissolution_lot)  # assets_available: None; patch_assets: (True, []); check_lot: True
 
     lot_assets = [rP['relatedProcessID'] for rP in pending_dissolution_lot['relatedProcesses'] if rP['type'] == 'asset']
@@ -444,6 +450,8 @@ def test_process_lots(bot, logger, mocker):
 
     assert mock_check_lot.call_count == 6
     assert mock_check_lot.call_args[0] == (pending_dissolution_lot,)
+
+    assert mock_patch_clean_related_process.call_count == 1
 
     # Lot is not available
     mock_check_lot.side_effect = iter([
@@ -475,6 +483,10 @@ def test_process_lots(bot, logger, mocker):
         (False, []),
         (True, ['all_assets'])
     ])
+    mock_get_asset.side_effect = iter([
+        munchify(assets[9])
+    ])
+
     bot.process_lots(pending_dissolution_lot)
 
     log_strings = logger.log_capture_string.getvalue().split('\n')
@@ -490,6 +502,8 @@ def test_process_lots(bot, logger, mocker):
 
     assert mock_check_assets.call_count == 5
     assert mock_patch_assets.call_args[0] == (pending_dissolution_lot, 'pending')
+
+    assert mock_patch_clean_related_process.call_count == 2
 
     # Pending sold lot
     mock_check_lot.side_effect = iter([
@@ -652,6 +666,8 @@ def test_process_lots(bot, logger, mocker):
 
     assert mock_check_assets.call_count == 7
     assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending')
+
+    assert mock_patch_clean_related_process.call_count == 3
 
     # Test active.salable lot
     mock_create_auction = mocker.patch.object(bot, '_create_auction', autospec=True)
