@@ -1763,7 +1763,7 @@ def test_clean_related_processes(bot, logger, mocker):
 
     # Removing is succesful
     bot._remove_asset_lot_related_process.return_value = {}
-    result = bot.clean_asset_related_processes(lot, assets_rPs)
+    result = bot.clean_asset_related_processes(assets_rPs)
 
     assert result is True
     assert bot._remove_asset_lot_related_process.call_count == 1
@@ -1774,7 +1774,7 @@ def test_clean_related_processes(bot, logger, mocker):
         RequestFailed(response=munchify({"text": "Request failed.", "status_code": 502}))
     ]
 
-    result = bot.clean_asset_related_processes(lot, assets_rPs)
+    result = bot.clean_asset_related_processes(assets_rPs)
 
     assert result is False
     assert bot._remove_asset_lot_related_process.call_count == 2
