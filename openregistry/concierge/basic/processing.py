@@ -161,7 +161,13 @@ class ProcessingBasic(object):
                 return True
 
     def _process_lot_and_assets(self, lot, lot_status, asset_status):
-        result, _ = self.patch_assets(lot, asset_status)
+
+        related_lot = lot['id']
+
+        if asset_status == 'pending':
+            related_lot = None
+
+        result, _ = self.patch_assets(lot, asset_status, related_lot)
         if result:
             logger.info("Assets {} from Lot {} will be patched to '{}'".format(lot['assets'], lot['id'], asset_status))
         else:
@@ -260,6 +266,7 @@ class ProcessingBasic(object):
         patched_assets = []
         is_all_patched = True
         patch_data = {"status": status, "relatedLot": related_lot}
+
         for asset_id in lot['assets']:
             try:
                 self._patch_single_asset(asset_id, patch_data)
