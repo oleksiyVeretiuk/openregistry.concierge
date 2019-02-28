@@ -457,7 +457,7 @@ def test_process_lots(bot, logger, mocker):
     mock_mapping.put.assert_called_with(pending_dissolution_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
-    assert mock_patch_assets.call_args[0] == (pending_dissolution_lot, 'pending')
+    assert mock_patch_assets.call_args[0] == (pending_dissolution_lot, 'pending', None)
 
     recomposed_lot = lots[3]['data']
 
@@ -484,7 +484,7 @@ def test_process_lots(bot, logger, mocker):
     mock_mapping.put.assert_called_with(recomposed_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
-    assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending')
+    assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending', None)
 
     mock_check_lot.side_effect = iter([
         True
@@ -508,7 +508,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_patch_lot.call_args[0] == (recomposed_lot, 'pending')
 
     assert mock_check_assets.call_count == 4
-    assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending')
+    assert mock_patch_assets.call_args[0] == (recomposed_lot, 'pending', None)
 
 
     mock_check_lot.side_effect = iter([
@@ -537,7 +537,7 @@ def test_process_lots(bot, logger, mocker):
     mock_mapping.put.assert_called_with(pending_sold_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
-    assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
+    assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete', pending_sold_lot['id'])
 
 
     mock_check_lot.side_effect = iter([
@@ -563,7 +563,7 @@ def test_process_lots(bot, logger, mocker):
     mock_mapping.put.assert_called_with(pending_sold_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
-    assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete')
+    assert mock_patch_assets.call_args[0] == (pending_sold_lot, 'complete', pending_sold_lot['id'])
 
     # Test pending.deleted lot
     pending_deleted_lot = lots[6]['data']
@@ -593,7 +593,7 @@ def test_process_lots(bot, logger, mocker):
     mock_mapping.put.assert_called_with(pending_deleted_lot['id'], True)
 
     assert mock_check_assets.call_count == 4
-    assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending')
+    assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending', None)
 
 
 def test_process_lots_broken(bot, logger, mocker):
