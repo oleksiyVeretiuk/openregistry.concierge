@@ -163,6 +163,20 @@ class ProcessingLoki(object):
                 get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish')
             )
             if result:
+
+                if get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'finish') == 'pending':
+                    # Remove related processes with lot type from asset that switched in pending status
+                    asset = self.assets_client.get_asset(lot['relatedProcesses'][0]['relatedProcessID']).data
+                    related_processes = [
+                        rP for rP in asset.get('relatedProcesses', [])
+                        if rP['type'] == 'lot' and rP['relatedProcessID'] == lot['id']
+                    ]
+
+                    for rp in related_processes:
+                        rp['asset_parent'] = asset['id']
+
+                    self.clean_asset_related_processes(related_processes)
+
                 self.lots_mapping.put(lot['id'], True)
 
     def get_next_auction(self, lot):
@@ -257,7 +271,7 @@ class ProcessingLoki(object):
                 patched_rPs.append(created_rP)
         return is_all_patched, patched_rPs
 
-    def clean_asset_related_processes(self, lot, assets_rPs):
+    def clean_asset_related_processes(self, assets_rPs):
         is_all_patched = True
         for rP in assets_rPs:
             try:
@@ -265,7 +279,7 @@ class ProcessingLoki(object):
             except EXCEPTIONS as e:
                 is_all_patched = False
                 message = 'Server error: {}'.format(e.status_code) if e.status_code >= 500 else e.message
-                logger.error("Failed to clean relatedProcess {} in Asset {} ({})".format(rP['id'], lot['id'], message))
+                logger.error("Failed to clean relatedProcess {} in Asset {} ({})".format(rP['id'], rP['asset_parent'], message))
         return is_all_patched
 
     @retry(stop_max_attempt_number=5, retry_on_exception=retry_on_error, wait_fixed=2000)
@@ -364,7 +378,7 @@ class ProcessingLoki(object):
         else:
             result, patched_rPs = self.add_related_process_to_assets(lot)
             if not result and patched_rPs:
-                self.clean_asset_related_processes(lot, patched_rPs)
+                self.clean_asset_related_processes(patched_rPs)
                 self.patch_assets(lot, 'pending')
                 return False
             elif not result:
