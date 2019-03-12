@@ -89,10 +89,10 @@ class RedisMapping(MappingInterface):
         self.db.delete('check')
 
     def get(self, key):
-        return self.db.get(key)
+        return bool(self.db.get(key))
 
     def put(self, key, value):
-        self.db.set(key, value, ex=self.expire_time)
+        self.db.set(key, int(value), ex=self.expire_time)
 
     def has(self, key):
         return self.db.exists(key)
