@@ -5,11 +5,32 @@ import mock
 from openregistry.concierge.mapping_types import (
     LazyDBMapping,
     RedisMapping,
-    VoidMapping
+    VoidMapping,
+    MappingConfigurationException
 )
 
 
 class TestRedisDB(unittest.TestCase):
+
+    def setUp(self):
+        self.patch_strict_redis = mock.patch('openregistry.concierge.mapping_types.StrictRedis')
+        self.mocked_redis_class = self.patch_strict_redis.start()
+        self.mocked_redis = mock.MagicMock()
+        self.mocked_redis_class.return_value = self.mocked_redis
+
+        mock_logger = mock.MagicMock()
+
+        config = {
+            'type': 'redis',
+            'host': '127.0.0.1',
+            'port': 6379,
+            'name': 0,
+            'password': 'test',
+        }
+        self.mapping = RedisMapping(config, mock_logger)
+
+    def tearDown(self):
+        self.patch_strict_redis.stop()
 
     @mock.patch('openregistry.concierge.mapping_types.StrictRedis')
     def test_lots_mapping_redis(self, mock_redis):
@@ -35,6 +56,87 @@ class TestRedisDB(unittest.TestCase):
                 **config
             )
         )
+
+    def test_check_redis_connection(self):
+        self.mapping._check_redis_connection()
+
+        self.mocked_redis.set.assert_called_with('check', 'check')
+        self.mocked_redis.delete.assert_called_with('check')
+
+    def test_put(self):
+        key = 'key'
+        value = True
+
+        self.mapping.put(key, value)
+        self.mocked_redis.set.assert_called_with(
+            key,
+            1,
+            ex=self.mapping.expire_time
+        )
+
+    def test_get(self):
+        key = 'key'
+        value = 1
+
+        self.mocked_redis.get.return_value = value
+
+        result = self.mapping.get(key)
+        self.assertIs(result, True)
+        self.mocked_redis.get.assert_called_with(key)
+
+    def test_has(self):
+        key = 'key'
+        value = True
+
+        self.mocked_redis.exists.return_value = value
+
+        result = self.mapping.has(key)
+        self.assertIs(result, value)
+        self.mocked_redis.exists.assert_called_with(key)
+
+    def test_delete(self):
+        key = 'key'
+
+        self.mapping.delete(key)
+        self.mocked_redis.delete.assert_called_with(key)
+
+    def test_is_empty_true(self):
+        self.mocked_redis.scan_iter.return_value = ['some']
+
+        result = self.mapping.is_empty()
+        self.assertIs(result, True)
+        self.mocked_redis.scan_iter.assert_called_with(count=1)
+
+    def test_is_empty_false(self):
+        self.mocked_redis.scan_iter.return_value = []
+
+        result = self.mapping.is_empty()
+        self.assertIs(result, False)
+        self.mocked_redis.scan_iter.assert_called_with(count=1)
+
+    def test_clean(self):
+        self.mapping.clean()
+        self.assertEqual(self.mocked_redis.flushdb.call_count, 1)
+
+    def test_validate_config_without_host(self):
+        config = {}
+
+        with self.assertRaises(MappingConfigurationException) as exp:
+            self.mapping.validate_config(config)
+            self.assertEqual(
+                exp.message,
+                'host should be present for redis type mapping'
+            )
+
+    def test_validate_config_without_port(self):
+        config = {'host': 'some'}
+
+        with self.assertRaises(MappingConfigurationException) as exp:
+            self.mapping.validate_config(config)
+            self.assertEqual(
+                exp.message,
+                'port should be present for redis type mapping'
+            )
 
 
 class TestLazyDB(unittest.TestCase):
