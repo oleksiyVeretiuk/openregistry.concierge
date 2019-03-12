@@ -376,13 +376,12 @@ class ProcessingLoki(object):
                         'patching assets to {}'.format(get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'pre')))
             return False
         else:
-            result, patched_rPs = self.add_related_process_to_assets(lot)
-            if not result and patched_rPs:
-                self.clean_asset_related_processes(patched_rPs)
+            result, asset_added_rPs = self.add_related_process_to_assets(lot)
+            if not result and asset_added_rPs:
+                self.clean_asset_related_processes(asset_added_rPs)
                 self.patch_assets(lot, 'pending')
                 return False
             elif not result:
-                self._patch_lot_asset_related_processes(lot, cleanup=True)
                 self.patch_assets(lot, 'pending')
                 return False
 
@@ -392,22 +391,25 @@ class ProcessingLoki(object):
             )
             if result is False:
                 log_assets_message(logger, 'info', "Assets {assets} will be repatched to 'pending'", lot['relatedProcesses'])
+                self.clean_asset_related_processes(asset_added_rPs)
                 result, _ = self.patch_assets(lot, get_next_status(NEXT_STATUS_CHANGE, 'asset', lot['status'], 'fail'))
                 if result is False:
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching assets to active')
                 return False
             else:
-                result, patched_rPs = self._patch_lot_asset_related_processes(lot)
+                result, lot_patched_rPs = self._patch_lot_asset_related_processes(lot)
 
-                if not result and patched_rPs:
+                if not result and lot_patched_rPs:
                     lot_with_patched_rPs = {
                         'id': lot['id'],
-                        'relatedProcesses': patched_rPs
+                        'relatedProcesses': lot_patched_rPs
                     }
                     self._patch_lot_asset_related_processes(lot_with_patched_rPs, cleanup=True)
+                    self.clean_asset_related_processes(asset_added_rPs)
                     self.patch_assets(lot, 'pending')
                     return False
                 elif not result:
+                    self.clean_asset_related_processes(asset_added_rPs)
                     self.patch_assets(lot, 'pending')
                     return False
 
@@ -430,6 +432,7 @@ class ProcessingLoki(object):
                 if result is False:
                     self._process_lot_and_assets(lot, 'composing', 'pending')
                     self._patch_lot_asset_related_processes(lot, cleanup=True)
+                    self.clean_asset_related_processes(asset_added_rPs)
                     log_broken_lot(self.db, logger, self.errors_doc, lot, 'patching Lot to pending')
                     return False
                 return True
