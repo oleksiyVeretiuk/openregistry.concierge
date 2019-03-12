@@ -419,6 +419,7 @@ def test_process_lots(bot, logger, mocker):
     lot_assets = [rP['relatedProcessID'] for rP in verification_lot['relatedProcesses'] if rP['type'] == 'asset']
     assert log_strings[6] == "Assets {} from Lot {} will be patched to '{}'".format(lot_assets, verification_lot['id'], 'pending')
 
+    assert mock_patch_clean_related_process.call_count == 1
 
     # status == 'pending.dissolution'
     mock_check_lot.side_effect = iter([
@@ -451,7 +452,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_lot.call_count == 6
     assert mock_check_lot.call_args[0] == (pending_dissolution_lot,)
 
-    assert mock_patch_clean_related_process.call_count == 1
+    assert mock_patch_clean_related_process.call_count == 2
 
     # Lot is not available
     mock_check_lot.side_effect = iter([
@@ -503,7 +504,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_assets.call_count == 5
     assert mock_patch_assets.call_args[0] == (pending_dissolution_lot, 'pending')
 
-    assert mock_patch_clean_related_process.call_count == 2
+    assert mock_patch_clean_related_process.call_count == 3
 
     # Pending sold lot
     mock_check_lot.side_effect = iter([
@@ -667,7 +668,7 @@ def test_process_lots(bot, logger, mocker):
     assert mock_check_assets.call_count == 7
     assert mock_patch_assets.call_args[0] == (pending_deleted_lot, 'pending')
 
-    assert mock_patch_clean_related_process.call_count == 3
+    assert mock_patch_clean_related_process.call_count == 4
 
     # Test active.salable lot
     mock_create_auction = mocker.patch.object(bot, '_create_auction', autospec=True)
